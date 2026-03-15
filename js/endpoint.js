@@ -88,11 +88,16 @@ class EndpointManager {
     this.abort();
     this._abort = new AbortController();
 
-    const body = new URLSearchParams({ query: sparql });
+    // Route cross-origin requests through the PHP proxy to avoid CORS errors.
+    const crossOrigin = this._isCrossOrigin();
+    const fetchUrl    = crossOrigin ? 'proxy.php' : this.url;
+    const body        = crossOrigin
+      ? new URLSearchParams({ endpoint: this.url, query: sparql })
+      : new URLSearchParams({ query: sparql });
 
     let response;
     try {
-      response = await fetch(this.url, {
+      response = await fetch(fetchUrl, {
         method:  'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -103,7 +108,7 @@ class EndpointManager {
       });
     } catch (err) {
       if (err.name === 'AbortError') throw err;
-      throw new Error(`Network error: ${err.message}. Check that the endpoint URL is correct and CORS is enabled.`);
+      throw new Error(`Network error: ${err.message}. Check that the endpoint URL is correct and that the server is reachable.`);
     } finally {
       this._abort = null;
     }
@@ -122,6 +127,14 @@ class EndpointManager {
       return json;
     } else {
       return await response.text();
+    }
+  }
+
+  _isCrossOrigin() {
+    try {
+      return new URL(this.url).origin !== window.location.origin;
+    } catch {
+      return false;
     }
   }
 
