@@ -38,8 +38,40 @@ Then open `http://localhost:8000` in your browser. Any static server works — P
 | Wikidata | `https://query.wikidata.org/sparql` |
 | DBpedia | `https://dbpedia.org/sparql` |
 | UniProt | `https://sparql.uniprot.org/sparql` |
+| OSM Planet | https://qlever.dev/api/osm-planet |
 
 ---
+
+### Example queries
+
+#### Buildings in Stühlinger
+
+```
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX osmkey: <https://www.openstreetmap.org/wiki/Key:>
+PREFIX ogc: <http://www.opengis.net/rdf#>
+PREFIX osmrel: <https://www.openstreetmap.org/relation/>
+SELECT ?osm_id ?hasgeometry
+WHERE {
+  osmrel:1960198 ogc:sfContains ?osm_id .
+  ?osm_id geo:hasGeometry/geo:asWKT ?hasgeometry .
+  ?osm_id osmkey:building ?building .
+}
+```
+
+#### Mungo National Park
+
+Finds osm:6321578 https://www.openstreetmap.org/relation/6321578, which is Mungo National Park, which you can see here: https://www.openstreetmap.org/relation/6321578#map=10/-33.5309/143.0487&layers=C
+
+```
+PREFIX osmkey: <https://www.openstreetmap.org/wiki/Key:>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT *
+WHERE {
+  ?place osmkey:name "Mungo National Park" .
+  ?place geo:hasGeometry/geo:asWKT ?geometry .
+}
+```
 
 ## CORS
 
