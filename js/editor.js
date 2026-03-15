@@ -244,34 +244,60 @@ class QueryEditor {
     return { ok: true, parsed: null };
   }
 
-  // ── Basic formatter ───────────────────────────────────────────────────────
+  // ── Formatter ─────────────────────────────────────────────────────────────
 
   _formatQuery(query) {
     try {
-      // Strip leading/trailing whitespace from each line, re-indent by depth
-      const lines = query.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      const result = [];
-      let depth = 0;
+      // 1. Collapse all whitespace runs to a single space.
+      let q = query.replace(/\s+/g, ' ').trim();
+
+      // 2. Insert newlines at structural boundaries (coarse → fine).
+
+      // Between successive PREFIX declarations.
+      q = q.replace(/>\s+(?=PREFIX\b)/gi, '>\n');
+
+      // Between the last PREFIX URI and the query-form keyword.
+      q = q.replace(/>\s+(?=SELECT\b|ASK\b|CONSTRUCT\b|DESCRIBE\b)/gi, '>\n');
+
+      // Before WHERE { (SELECT vars stay on the SELECT line).
+      q = q.replace(/\s+WHERE\s*\{/gi, '\nWHERE {');
+
+      // After every opening brace.
+      q = q.replace(/\{\s*/g, '{\n');
+
+      // Before every closing brace.
+      q = q.replace(/\s*\}/g, '\n}');
+
+      // Clause-level keywords inside graph patterns.
+      q = q.replace(/\s+(OPTIONAL|FILTER|UNION|MINUS|BIND|VALUES|GRAPH|SERVICE)\b/gi, '\n$1');
+
+      // Triple terminator dot before a variable, URI, or blank node.
+      q = q.replace(/\.\s+(?=[?<_])/g, '.\n');
+
+      // Result modifiers on their own line.
+      q = q.replace(/\s+(ORDER\s+BY|GROUP\s+BY|HAVING|LIMIT|OFFSET)\b/gi, '\n$1');
+
+      // 3. Re-indent based on brace depth.
+      const lines = q.split('\n').map(l => l.trim()).filter(Boolean);
+      const out   = [];
+      let depth   = 0;
 
       for (const line of lines) {
-        const closes = (line.match(/\}/g) || []).length;
         const opens  = (line.match(/\{/g) || []).length;
+        const closes = (line.match(/\}/g) || []).length;
 
-        // Decrease indent before lines that start with '}'
+        // Decrease depth before a line that opens with '}'.
         if (line.startsWith('}')) depth = Math.max(0, depth - 1);
 
-        result.push('  '.repeat(depth) + line);
+        out.push('  '.repeat(depth) + line);
 
-        // Adjust depth after the line
-        depth = Math.max(0, depth + opens - closes);
-        if (line.startsWith('}')) {
-          // already adjusted above
-        } else if (closes > opens) {
-          depth = Math.max(0, depth);
-        }
+        // Adjust depth after the line; compensate for the pre-decrement above.
+        depth = Math.max(0, line.startsWith('}')
+          ? depth + opens - closes + 1   // +1 undoes the pre-decrement
+          : depth + opens - closes);
       }
 
-      return result.join('\n');
+      return out.join('\n');
     } catch {
       return null;
     }
