@@ -127,6 +127,7 @@
 
     editor.setRunning(true);
     editor.setStatus('Running…', 'running');
+    results.clear();
     logMessage(`Running query on ${endpoint.getUrl()}`, 'info');
 
     const t0 = performance.now();
