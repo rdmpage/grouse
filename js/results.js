@@ -8,11 +8,30 @@
  *   Errors  → error message display
  */
 
+// Well-known prefix map: namespace URI → display prefix.
+// Defined once at module level so it isn't rebuilt on every _shortenUri call.
+const BUILTIN_PREFIXES = {
+  'http://www.w3.org/1999/02/22-rdf-syntax-ns#': 'rdf:',
+  'http://www.w3.org/2000/01/rdf-schema#':        'rdfs:',
+  'http://www.w3.org/2002/07/owl#':               'owl:',
+  'http://www.w3.org/2001/XMLSchema#':            'xsd:',
+  'http://schema.org/':                           'schema:',
+  'http://xmlns.com/foaf/0.1/':                   'foaf:',
+  'http://purl.org/dc/terms/':                    'dcterms:',
+  'http://purl.org/dc/elements/1.1/':             'dc:',
+  'http://www.w3.org/2004/02/skos/core#':         'skos:',
+  'https://schema.org/':                          'schema:',
+  'http://www.wikidata.org/entity/':              'wd:',
+  'http://www.wikidata.org/prop/direct/':         'wdt:',
+  'http://www.w3.org/ns/prov#':                   'prov:',
+};
+
 class ResultsView {
   constructor() {
-    this._tabResults  = document.getElementById('tab-results');
-    this._btnExport   = document.getElementById('btn-export-csv');
-    this._lastResults = null;   // store for CSV export
+    this._tabResults    = document.getElementById('tab-results');
+    this._btnExport     = document.getElementById('btn-export-csv');
+    this._lastResults   = null;   // store for CSV export
+    this._queryPrefixes = {};     // populated from PREFIX declarations at render time
 
     this._btnExport.addEventListener('click', () => this.exportCSV());
   }
@@ -196,31 +215,17 @@ class ResultsView {
 
   // Shorten URIs using query-defined prefixes first, then well-known built-ins.
   _shortenUri(uri) {
-    const builtins = {
-      'http://www.w3.org/1999/02/22-rdf-syntax-ns#': 'rdf:',
-      'http://www.w3.org/2000/01/rdf-schema#':        'rdfs:',
-      'http://www.w3.org/2002/07/owl#':               'owl:',
-      'http://www.w3.org/2001/XMLSchema#':            'xsd:',
-      'http://schema.org/':                           'schema:',
-      'http://xmlns.com/foaf/0.1/':                   'foaf:',
-      'http://purl.org/dc/terms/':                    'dcterms:',
-      'http://purl.org/dc/elements/1.1/':             'dc:',
-      'http://www.w3.org/2004/02/skos/core#':         'skos:',
-      'https://schema.org/':                          'schema:',
-      'http://www.wikidata.org/entity/':              'wd:',
-      'http://www.wikidata.org/prop/direct/':         'wdt:',
-      'http://www.w3.org/ns/prov#':                   'prov:',
-    };
-    // Query-defined prefixes take priority so the display mirrors the query.
-    const all = Object.assign({}, builtins, this._queryPrefixes || {});
-    for (const [ns, prefix] of Object.entries(all)) {
+    // Pass 1: query-defined prefixes (mirror exactly what the query declared).
+    for (const [ns, prefix] of Object.entries(this._queryPrefixes)) {
       if (uri.startsWith(ns)) return prefix + uri.slice(ns.length);
     }
-    // Shorten to last segment if long
+    // Pass 2: built-in well-known prefixes.
+    for (const [ns, prefix] of Object.entries(BUILTIN_PREFIXES)) {
+      if (uri.startsWith(ns)) return prefix + uri.slice(ns.length);
+    }
+    // Pass 3: last-segment truncation for long unrecognised URIs.
     if (uri.length > 60) {
-      const hashPos  = uri.lastIndexOf('#');
-      const slashPos = uri.lastIndexOf('/');
-      const cut = Math.max(hashPos, slashPos);
+      const cut = Math.max(uri.lastIndexOf('#'), uri.lastIndexOf('/'));
       if (cut > 0 && cut < uri.length - 1) return '…' + uri.slice(cut);
     }
     return uri;
