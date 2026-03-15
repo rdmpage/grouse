@@ -19,6 +19,8 @@
 
   const results = new ResultsView();
 
+  const mapView = new MapView();
+
   const views = new ViewsManager({
     onOpen: (view) => {
       editor.setQuery(view.query);
@@ -128,6 +130,7 @@
     editor.setRunning(true);
     editor.setStatus('Running…', 'running');
     results.clear();
+    document.getElementById('tab-btn-map').classList.add('hidden');
     logMessage(`Running query on ${endpoint.getUrl()}`, 'info');
 
     const t0 = performance.now();
@@ -140,6 +143,17 @@
       results.render(data, ms, prefixes);
       editor.setStatus(statusSummary(data, ms), 'success');
       logMessage(`Query completed in ${ms} ms`, 'success');
+
+      // Show/hide map tab based on geometry presence
+      const geomInfo = results.getGeomInfo();
+      const mapTab   = document.getElementById('tab-btn-map');
+      if (geomInfo) {
+        mapTab.classList.remove('hidden');
+      } else {
+        mapTab.classList.add('hidden');
+        // If map tab was active, switch back to results
+        if (mapTab.getAttribute('aria-selected') === 'true') setResultsTab('results');
+      }
 
       // Switch to results tab
       setResultsTab('results');
@@ -180,13 +194,18 @@
     document.querySelectorAll('.results-tab').forEach(t => {
       const active = t.dataset.tab === tabName;
       t.classList.toggle('active', active);
-      t.setAttribute('aria-selected', active);
+      t.setAttribute('aria-selected', String(active));
     });
     document.querySelectorAll('.tab-panel').forEach(p => {
       const active = p.id === 'tab-' + tabName;
       p.classList.toggle('active', active);
       p.hidden = !active;
     });
+    if (tabName === 'map') {
+      const geomInfo = results.getGeomInfo();
+      if (geomInfo) mapView.render(geomInfo.vars, geomInfo.bindings, geomInfo.geomCols);
+      setTimeout(() => mapView.invalidateSize(), 50);
+    }
   }
 
   // ── Messages log ───────────────────────────────────────────────────────────

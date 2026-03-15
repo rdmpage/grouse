@@ -32,6 +32,7 @@ class ResultsView {
     this._btnExport     = document.getElementById('btn-export-csv');
     this._lastResults   = null;   // store for CSV export
     this._queryPrefixes = {};     // populated from PREFIX declarations at render time
+    this._lastGeomInfo  = null;   // { vars, bindings, geomCols } when WKT found
 
     this._btnExport.addEventListener('click', () => this.exportCSV());
   }
@@ -80,9 +81,14 @@ class ResultsView {
   }
 
   clear() {
-    this._lastResults = null;
+    this._lastResults  = null;
+    this._lastGeomInfo = null;
     this._btnExport.classList.add('hidden');
     this._tabResults.innerHTML = '<div class="results-placeholder">Run a query to see results.</div>';
+  }
+
+  getGeomInfo() {
+    return this._lastGeomInfo;
   }
 
   exportCSV() {
@@ -145,6 +151,13 @@ class ResultsView {
       </div>`;
 
     this._btnExport.classList.remove('hidden');
+
+    // Geometry detection for map tab
+    this._lastGeomInfo = null;
+    const geomCols = this._detectGeomCols(vars, bindings);
+    if (geomCols.length > 0) {
+      this._lastGeomInfo = { vars, bindings, geomCols };
+    }
   }
 
   _renderAsk(boolean, ms) {
@@ -196,6 +209,23 @@ class ResultsView {
     return parts.length
       ? `<div class="results-footer">${parts.map(p => `<span>${p}</span>`).join('')}</div>`
       : '';
+  }
+
+  // ── Geometry detection ────────────────────────────────────────────────────
+
+  _detectGeomCols(vars, bindings) {
+    const WKT_TYPE    = 'http://www.opengis.net/ont/geosparql#wktLiteral';
+    const WKT_PATTERN = /^\s*(<[^>]+>\s*)?(POINT|LINESTRING|POLYGON|MULTI|GEOMETRYCOLLECTION)\s*[\s(]/i;
+
+    return vars.filter(v => {
+      for (const binding of bindings) {
+        const term = binding[v];
+        if (!term) continue;
+        if (term.datatype === WKT_TYPE) return true;
+        if (term.type === 'literal' && WKT_PATTERN.test(term.value)) return true;
+      }
+      return false;
+    });
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────
