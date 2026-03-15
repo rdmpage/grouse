@@ -6,20 +6,18 @@
  * origin (different host or port). PHP forwards the query server-side
  * and pipes the response back verbatim.
  *
- * POST params:
+ * Params (POST body or query string):
  *   endpoint  — full SPARQL endpoint URL
  *   query     — SPARQL query string
  *
  * The Accept header from the browser is forwarded to the endpoint.
  */
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    exit('Method Not Allowed');
-}
-
-$endpoint = trim($_POST['endpoint'] ?? '');
-$query    = trim($_POST['query']    ?? '');
+// Merge POST body and query string so the proxy works regardless of
+// how php -S routes the request.
+$params   = array_merge($_GET, $_POST);
+$endpoint = trim($params['endpoint'] ?? '');
+$query    = trim($params['query']    ?? '');
 $accept   = $_SERVER['HTTP_ACCEPT'] ?? 'application/sparql-results+json';
 
 // ── Validate inputs ────────────────────────────────────────────────────────
