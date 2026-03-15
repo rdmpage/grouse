@@ -24,7 +24,8 @@ class ResultsView {
    * @param {object|string} data  Parsed JSON or raw text string.
    * @param {number}        ms    Query duration in milliseconds.
    */
-  render(data, ms) {
+  render(data, ms, prefixes = {}) {
+    this._queryPrefixes = prefixes;   // from PREFIX declarations in the query
     this._lastResults = null;
     this._btnExport.classList.add('hidden');
 
@@ -193,9 +194,9 @@ class ResultsView {
     return `${(ms / 1000).toFixed(2)} s`;
   }
 
-  // Shorten well-known URIs to their prefixed form for display
+  // Shorten URIs using query-defined prefixes first, then well-known built-ins.
   _shortenUri(uri) {
-    const prefixes = {
+    const builtins = {
       'http://www.w3.org/1999/02/22-rdf-syntax-ns#': 'rdf:',
       'http://www.w3.org/2000/01/rdf-schema#':        'rdfs:',
       'http://www.w3.org/2002/07/owl#':               'owl:',
@@ -210,7 +211,9 @@ class ResultsView {
       'http://www.wikidata.org/prop/direct/':         'wdt:',
       'http://www.w3.org/ns/prov#':                   'prov:',
     };
-    for (const [ns, prefix] of Object.entries(prefixes)) {
+    // Query-defined prefixes take priority so the display mirrors the query.
+    const all = Object.assign({}, builtins, this._queryPrefixes || {});
+    for (const [ns, prefix] of Object.entries(all)) {
       if (uri.startsWith(ns)) return prefix + uri.slice(ns.length);
     }
     // Shorten to last segment if long

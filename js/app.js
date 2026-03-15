@@ -104,6 +104,18 @@
 
   // ── Query execution ────────────────────────────────────────────────────────
 
+  // Extract PREFIX declarations from a SPARQL query string.
+  // Returns { namespaceUri: 'prefix:' } — same shape as ResultsView's builtins.
+  function extractPrefixes(sparql) {
+    const prefixes = {};
+    const re = /\bPREFIX\s+(\w*)\s*:\s*<([^>]+)>/gi;
+    let m;
+    while ((m = re.exec(sparql)) !== null) {
+      prefixes[m[2]] = m[1] + ':';
+    }
+    return prefixes;
+  }
+
   async function runQuery() {
     const query = editor.getQuery().trim();
     if (!query) return;
@@ -120,10 +132,11 @@
     const t0 = performance.now();
 
     try {
-      const data = await endpoint.query(query);
-      const ms   = Math.round(performance.now() - t0);
+      const data     = await endpoint.query(query);
+      const ms       = Math.round(performance.now() - t0);
+      const prefixes = extractPrefixes(query);
 
-      results.render(data, ms);
+      results.render(data, ms, prefixes);
       editor.setStatus(statusSummary(data, ms), 'success');
       logMessage(`Query completed in ${ms} ms`, 'success');
 
