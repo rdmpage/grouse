@@ -324,6 +324,12 @@
     btnTheme.textContent = theme === 'dark' ? '☀' : '☾';
     btnTheme.title       = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
     Storage.set('grouse_theme', theme);
+
+    // Keep browser chrome colour in sync with the sidebar background.
+    const colour = theme === 'dark' ? '#222222' : '#f7f7f7';
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+      m.setAttribute('content', colour);
+    });
   }
 
   btnTheme.addEventListener('click', () => {
