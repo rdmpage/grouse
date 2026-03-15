@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grouse — SPARQL Workbench</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Sidebar ─────────────────────────────────── -->
+    <aside id="sidebar">
+      <div id="sidebar-header">
+        <span class="logo">grouse</span>
+        <span class="logo-sub">SPARQL workbench</span>
+      </div>
+
+      <div id="sidebar-body">
+
+        <!-- Endpoints section -->
+        <div class="tree-section" id="section-endpoints">
+          <button class="tree-section-header" aria-expanded="true" data-section="endpoints">
+            <span class="chevron">▾</span>
+            <span>Endpoints</span>
+          </button>
+          <div class="tree-section-body" id="body-endpoints">
+            <div id="endpoint-list" class="endpoint-list">
+              <div class="sidebar-empty">No endpoint connected.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Schema section (populated in Phase 2) -->
+        <div class="tree-section" id="section-schema">
+          <button class="tree-section-header" aria-expanded="false" data-section="schema">
+            <span class="chevron">▸</span>
+            <span>Schema</span>
+          </button>
+          <div class="tree-section-body collapsed" id="body-schema">
+            <div id="schema-tree" class="sidebar-empty">Connect to an endpoint to browse schema.</div>
+          </div>
+        </div>
+
+        <!-- Saved Queries section -->
+        <div class="tree-section" id="section-views">
+          <button class="tree-section-header" aria-expanded="false" data-section="views">
+            <span class="chevron">▸</span>
+            <span>Saved Queries</span>
+          </button>
+          <div class="tree-section-body collapsed" id="body-views">
+            <div id="views-list"></div>
+            <button class="btn-sidebar-action" id="btn-save-view" title="Save current query">+ Save current query</button>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Horizontal resize handle (sidebar | main) -->
+    <div id="divider-h" class="divider divider-h" title="Drag to resize"></div>
+
+    <!-- ── Main area ───────────────────────────────── -->
+    <main id="main">
+
+      <!-- Endpoint bar -->
+      <div id="endpoint-bar">
+        <div class="endpoint-input-row">
+          <span id="connection-dot" class="connection-dot disconnected" title="Disconnected"></span>
+          <input
+            type="url"
+            id="endpoint-url"
+            class="endpoint-url-input"
+            placeholder="https://query.wikidata.org/sparql"
+            spellcheck="false"
+            autocomplete="off"
+          >
+          <button id="btn-connect" class="btn">Connect</button>
+          <button id="btn-disconnect" class="btn btn-muted hidden">Disconnect</button>
+        </div>
+      </div>
+
+      <!-- Editor pane -->
+      <div id="editor-pane">
+        <div id="editor-toolbar">
+          <button id="btn-run" class="btn btn-primary" disabled title="Run query (Ctrl+Enter)">▶ Run</button>
+          <button id="btn-stop" class="btn btn-danger hidden" title="Stop query">■ Stop</button>
+          <button id="btn-validate" class="btn btn-muted" disabled title="Validate query syntax">Validate</button>
+          <button id="btn-format" class="btn btn-muted" disabled title="Format query">Format</button>
+          <div class="toolbar-spacer"></div>
+          <span id="editor-status" class="editor-status"></span>
+          <span id="validation-dot" class="validation-dot" title=""></span>
+        </div>
+
+        <div id="editor-wrap">
+          <div id="line-numbers" aria-hidden="true"></div>
+          <textarea
+            id="query-editor"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            placeholder="SELECT * WHERE {&#10;  ?s ?p ?o&#10;} LIMIT 10"
+          ></textarea>
+        </div>
+
+        <div id="validation-message" class="validation-message hidden"></div>
+      </div>
+
+      <!-- Vertical resize handle (editor | results) -->
+      <div id="divider-v" class="divider divider-v" title="Drag to resize"></div>
+
+      <!-- Results pane -->
+      <div id="results-pane">
+        <div id="results-toolbar">
+          <div id="results-tabs" role="tablist">
+            <button class="results-tab active" role="tab" data-tab="results" aria-selected="true">Results</button>
+            <button class="results-tab" role="tab" data-tab="messages" aria-selected="false">Messages</button>
+          </div>
+          <div class="results-actions">
+            <button id="btn-export-csv" class="btn btn-muted btn-sm hidden" title="Export results as CSV">Export CSV</button>
+          </div>
+        </div>
+
+        <div id="results-content">
+          <div id="tab-results" class="tab-panel active" role="tabpanel">
+            <div class="results-placeholder">Run a query to see results.</div>
+          </div>
+          <div id="tab-messages" class="tab-panel" role="tabpanel" hidden>
+            <div id="messages-log" class="messages-log"></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Optional: SPARQL.js parser for query validation (place sparqljs.min.js in lib/) -->
+  <script>
+    // Attempt to load SPARQL.js; non-fatal if absent
+    (function() {
+      const s = document.createElement('script');
+      s.src = 'lib/sparqljs.min.js';
+      s.onerror = () => {}; // silently skip if not found
+      document.head.appendChild(s);
+    })();
+  </script>
+
+  <script src="js/storage.js"></script>
+  <script src="js/endpoint.js"></script>
+  <script src="js/results.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
