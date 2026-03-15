@@ -13,7 +13,8 @@
   const endpoint = new EndpointManager();
 
   const editor = new QueryEditor({
-    onRun: runQuery,
+    onRun:  runQuery,
+    onStop: stopQuery,
   });
 
   const results = new ResultsView();
@@ -92,14 +93,14 @@
     btnDisconnect.classList.toggle('hidden', !connected);
   }
 
-  // ── Stop query button ──────────────────────────────────────────────────────
+  // ── Stop query ─────────────────────────────────────────────────────────────
 
-  document.getElementById('btn-stop').addEventListener('stop-query', () => {
+  function stopQuery() {
     endpoint.abort();
     editor.setRunning(false);
     editor.setStatus('Query stopped', '');
     logMessage('Query stopped by user', 'warn');
-  });
+  }
 
   // ── Query execution ────────────────────────────────────────────────────────
 

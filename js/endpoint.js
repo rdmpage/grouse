@@ -126,7 +126,7 @@ class EndpointManager {
   }
 
   _detectQueryType(sparql) {
-    const s = sparql.replace(/\s*#[^\n]*/g, '').trim().toLowerCase();
+    const s = sparql.replace(/^\s*#[^\n]*/gm, '').trim().toLowerCase();
     if (s.startsWith('construct')) return 'construct';
     if (s.startsWith('describe'))  return 'describe';
     if (s.startsWith('ask'))       return 'ask';

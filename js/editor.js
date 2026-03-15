@@ -6,8 +6,9 @@
  */
 
 class QueryEditor {
-  constructor({ onRun, onValidate }) {
+  constructor({ onRun, onStop, onValidate }) {
     this._onRun      = onRun;
+    this._onStop     = onStop;
     this._onValidate = onValidate;
     this._valid      = null;   // true | false | null (unknown)
 
@@ -146,7 +147,7 @@ class QueryEditor {
     });
 
     btnStop.addEventListener('click', () => {
-      this._el.btnStop.dispatchEvent(new CustomEvent('stop-query', { bubbles: true }));
+      if (this._onStop) this._onStop();
     });
 
     btnValidate.addEventListener('click', () => this.validate());
