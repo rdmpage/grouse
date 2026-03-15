@@ -314,6 +314,29 @@
     });
   }
 
+  // ── Theme toggle ──────────────────────────────────────────────────────────
+
+  const btnTheme = document.getElementById('btn-theme-toggle');
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    btnTheme.textContent = theme === 'dark' ? '☀' : '☾';
+    btnTheme.title       = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    Storage.set('grouse_theme', theme);
+  }
+
+  btnTheme.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  // Sync button label with the theme already set by the <head> script
+  (function syncThemeButton() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    btnTheme.textContent = theme === 'dark' ? '☀' : '☾';
+    btnTheme.title       = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  })();
+
   // ── Expand endpoints section by default ───────────────────────────────────
 
   const endpointsHeader = document.querySelector('[data-section="endpoints"]');

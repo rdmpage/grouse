@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grouse — SPARQL Workbench</title>
   <link rel="stylesheet" href="css/style.css">
+  <!-- Set theme before first paint to avoid flash of wrong theme -->
+  <script>
+    (function () {
+      var pref = localStorage.getItem('grouse_theme');
+      var systemLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      document.documentElement.setAttribute('data-theme', pref || (systemLight ? 'light' : 'dark'));
+    })();
+  </script>
 </head>
 <body>
   <div id="app">
@@ -12,8 +20,11 @@
     <!-- ── Sidebar ─────────────────────────────────── -->
     <aside id="sidebar">
       <div id="sidebar-header">
-        <span class="logo">grouse</span>
-        <span class="logo-sub">SPARQL workbench</span>
+        <div>
+          <span class="logo">grouse</span>
+          <span class="logo-sub">SPARQL workbench</span>
+        </div>
+        <button id="btn-theme-toggle" class="btn-theme-toggle" title="Switch to light mode" aria-label="Toggle theme">☀</button>
       </div>
 
       <div id="sidebar-body">
