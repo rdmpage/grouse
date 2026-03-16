@@ -36,7 +36,8 @@ SELECT ?p (COUNT(?p) AS ?count) WHERE {
 GROUP BY ?p
 ORDER BY DESC(?count)`;
 
-const SCHEMA_SAMPLE_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+// Fallback used when a type has no discoverable literal properties
+const SCHEMA_SAMPLE_QUERY_FALLBACK = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?s ?p ?o WHERE {
   { SELECT ?s WHERE { ?s rdf:type <$URI> } LIMIT 10 }
   ?s ?p ?o .
@@ -127,32 +128,71 @@ class SchemaManager {
 
   async _openType(el, type) {
     const label = type.label || this._localName(type.uri);
+    const body  = el.querySelector('.schema-type-body');
 
-    // Fire sample query to results pane (parallel with properties fetch)
-    const sampleQ = SCHEMA_SAMPLE_QUERY.replace(/\$URI/g, type.uri);
-    this._onSampleType(sampleQ, label);
+    if (body.dataset.loaded) {
+      // Properties already cached — re-fire the sample immediately
+      this._onSampleType(body._sampleQuery, label);
+      return;
+    }
 
-    // Load properties into sidebar body (only once)
-    const body = el.querySelector('.schema-type-body');
-    if (body.dataset.loaded) return;
+    // First open: fetch properties, then build and fire the pivoted sample query
     body.dataset.loaded = 'true';
     body.innerHTML = '<div class="schema-props-loading">Loading properties…</div>';
 
     try {
-      const propsQ = SCHEMA_PROPERTIES_QUERY.replace(/\$URI/g, type.uri);
-      const data   = await this._onQuery(propsQ);
-      this._renderProperties(body, data);
+      const propsQ   = SCHEMA_PROPERTIES_QUERY.replace(/\$URI/g, type.uri);
+      const data     = await this._onQuery(propsQ);
+      const propUris = this._renderProperties(body, data);
+
+      // Build pivoted SELECT (or fall back if no literal properties found)
+      body._sampleQuery = propUris.length > 0
+        ? this._buildPivotedQuery(type.uri, propUris)
+        : SCHEMA_SAMPLE_QUERY_FALLBACK.replace(/\$URI/g, type.uri);
+
+      this._onSampleType(body._sampleQuery, label);
     } catch (err) {
       body.innerHTML =
         `<div class="schema-props-error">Failed: ${this._esc(err.message)}</div>`;
     }
   }
 
+  /**
+   * Build a pivoted SELECT query: one column per literal property,
+   * 10 sampled entities of the given type.
+   */
+  _buildPivotedQuery(typeUri, propUris) {
+    const used = new Set(['s']);
+    const vars = propUris.map(uri => {
+      // Derive a valid SPARQL variable name from the property's local name
+      let base = this._localName(uri)
+        .replace(/[^a-zA-Z0-9_]/g, '_')
+        .replace(/^([^a-zA-Z_])/, '_$1');
+      let name = base;
+      let i = 2;
+      while (used.has(name)) name = `${base}_${i++}`;
+      used.add(name);
+      return { uri, name };
+    });
+
+    const selectVars = vars.map(v => `?${v.name}`).join(' ');
+    const optionals  = vars.map(v =>
+      `  OPTIONAL { ?s <${v.uri}> ?${v.name} }`
+    ).join('\n');
+
+    return `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?s ${selectVars} WHERE {
+  { SELECT ?s WHERE { ?s rdf:type <${typeUri}> } LIMIT 10 }
+${optionals}
+}`;
+  }
+
+  /** Render property list into body; returns array of property URIs. */
   _renderProperties(body, data) {
     const bindings = data?.results?.bindings || [];
     if (bindings.length === 0) {
       body.innerHTML = '<div class="schema-props-empty">No literal properties found.</div>';
-      return;
+      return [];
     }
     body.innerHTML = bindings.map(row => {
       const uri   = row.p.value;
@@ -163,6 +203,7 @@ class SchemaManager {
   <span class="schema-prop-count">${count}</span>
 </div>`;
     }).join('');
+    return bindings.map(row => row.p.value);
   }
 
   _setLoading() {

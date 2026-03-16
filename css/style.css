@@ -682,7 +682,6 @@ input:focus, textarea:focus {
   justify-content: center;
   height: 100%;
   color: var(--text-dim);
-  font-style: italic;
   font-size: 13px;
 }
 
@@ -763,7 +762,6 @@ input:focus, textarea:focus {
 
 .val-blank {
   color: var(--text-muted);
-  font-style: italic;
 }
 
 .val-boolean.true  { color: var(--success); }
