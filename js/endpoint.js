@@ -119,28 +119,23 @@ class EndpointManager {
       throw new Error(`HTTP ${response.status} ${response.statusText}${detail ? ': ' + detail.slice(0, 300) : ''}`);
     }
 
-    const ct = response.headers.get('content-type') || '';
+    const ct     = response.headers.get('content-type') || '';
     const ctBase = ct.split(';')[0].trim().toLowerCase();
 
-    if (ctBase === 'application/sparql-results+json' || ctBase === 'application/json') {
-      const json = await response.json();
-      if (json.error) throw new Error(json.error);
-      return { data: json, contentType: ctBase };
-    }
+    // Always read as text first so we can return the raw response.
+    const raw = await response.text();
 
-    // For RDF or unknown, return text with content-type
-    const text = await response.text();
-
-    // If content-type says JSON but we didn't handle it above, try parsing
     if (ctBase.includes('json')) {
-      try {
-        const json = JSON.parse(text);
-        if (json.error) throw new Error(json.error);
-        return { data: json, contentType: ctBase };
-      } catch {}
+      let json;
+      try { json = JSON.parse(raw); } catch {
+        // Content-type claimed JSON but body isn't — treat as text.
+        return { data: raw, contentType: ctBase, raw };
+      }
+      if (json.error) throw new Error(json.error);
+      return { data: json, contentType: ctBase, raw };
     }
 
-    return { data: text, contentType: ctBase || 'text/plain' };
+    return { data: raw, contentType: ctBase || 'text/plain', raw };
   }
 
   _isCrossOrigin() {

@@ -35,6 +35,7 @@ class ResultsView {
     this._queryPrefixes = {};     // populated from PREFIX declarations at render time
     this._lastGeomInfo  = null;   // { vars, bindings, geomCols } when WKT found
     this._lastQuads     = null;   // parsed N3 quads for RDF results
+    this._lastRaw       = '';     // raw server response text, for the Response tab
 
     this._btnExport.addEventListener('click', () => this.exportCSV());
   }
@@ -52,10 +53,15 @@ class ResultsView {
    * @param {object}        prefixes PREFIX map extracted from the query.
    * @param {number}        limit    Max rows to display (0 = no limit).
    */
-  render(data, ms, prefixes = {}, limit = 1000, contentType = '') {
+  render(data, ms, prefixes = {}, limit = 1000, contentType = '', raw = '') {
     this._queryPrefixes = prefixes;   // from PREFIX declarations in the query
-    this._lastResults = null;
+    this._lastResults   = null;
+    this._lastRaw       = raw;
     this._btnExport.classList.add('hidden');
+
+    // Populate the Response tab with the raw server text.
+    const responsePre = document.getElementById('response-pre');
+    if (responsePre) responsePre.textContent = raw || '(no response body)';
 
     // RDF result (CONSTRUCT / DESCRIBE)
     if (typeof data === 'string' && this._isRdfContentType(contentType)) {
@@ -99,9 +105,13 @@ class ResultsView {
     this._lastMs       = null;
     this._lastGeomInfo = null;
     this._lastQuads    = null;
+    this._lastRaw      = '';
     this._btnExport.classList.add('hidden');
     this._showRdfControls(false);
+    this._setTableTabLabel('Table');
     this._tabResults.innerHTML = '<div class="results-placeholder">Run a query to see results.</div>';
+    const responsePre = document.getElementById('response-pre');
+    if (responsePre) responsePre.textContent = '';
   }
 
   rerenderRdf(format) {
@@ -122,6 +132,10 @@ class ResultsView {
 
   getGeomInfo() {
     return this._lastGeomInfo;
+  }
+
+  getLastRaw() {
+    return this._lastRaw;
   }
 
   exportCSV() {
@@ -152,6 +166,7 @@ class ResultsView {
 
   _renderSelect(data, ms, limit = 1000) {
     this._showRdfControls(false);
+    this._setTableTabLabel('Table');
     const vars        = data.head.vars;
     const allBindings = data.results.bindings;
     const totalCount  = allBindings.length;
@@ -278,6 +293,7 @@ class ResultsView {
 
   _renderRdf(text, ms, contentType) {
     this._lastMs = ms;
+    this._setTableTabLabel('Triples');
 
     // JSON-LD: convert using N3 if available, else show formatted JSON
     if (contentType.startsWith('application/ld+json')) {
@@ -303,20 +319,13 @@ class ResultsView {
   }
 
   _parseAndDisplayRdf(text, ms, n3Format) {
-    const parser = new N3.Parser({ format: n3Format });
-    const quads  = [];
-    let parseError = null;
-
+    // Use the synchronous return form — parser.parse(string) returns Quad[]
+    // and throws on error. The callback form fires asynchronously for string
+    // input in the browserified build, leaving quads empty at render time.
+    let quads;
     try {
-      parser.parse(text, (err, quad) => {
-        if (err)  { parseError = err; return; }
-        if (quad) quads.push(quad);
-      });
+      quads = new N3.Parser({ format: n3Format }).parse(text);
     } catch (e) {
-      parseError = e;
-    }
-
-    if (parseError) {
       this._renderRaw(text, ms);
       return;
     }
@@ -324,10 +333,8 @@ class ResultsView {
     this._lastQuads = quads;
     this._showRdfControls(true);
 
-    // Default display format
     const fmtEl = document.getElementById('rdf-format');
-    const fmt   = fmtEl ? fmtEl.value : 'triples';
-    this._displayRdf(quads, ms, fmt);
+    this._displayRdf(quads, ms, fmtEl ? fmtEl.value : 'triples');
   }
 
   _displayRdf(quads, ms, format) {
@@ -467,6 +474,11 @@ class ResultsView {
     if (rdfSelect) rdfSelect.classList.toggle('hidden', !show);
     if (rowLabel)  rowLabel.classList.toggle('hidden',  show);
     if (rowSelect) rowSelect.classList.toggle('hidden',  show);
+  }
+
+  _setTableTabLabel(label) {
+    const btn = document.querySelector('.results-tab[data-tab="results"]');
+    if (btn) btn.textContent = label;
   }
 
   // ── Geometry detection ────────────────────────────────────────────────────

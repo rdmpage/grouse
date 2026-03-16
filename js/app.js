@@ -136,7 +136,7 @@
     const t0 = performance.now();
 
     try {
-      const { data, contentType } = await endpoint.query(query);
+      const { data, contentType, raw } = await endpoint.query(query);
       const ms       = Math.round(performance.now() - t0);
       const prefixes = extractPrefixes(query);
 
@@ -144,9 +144,10 @@
       const limitVal = limitEl ? limitEl.value : '1000';
       const limit    = limitVal === '' ? 0 : parseInt(limitVal, 10);
 
-      results.render(data, ms, prefixes, limit, contentType);
+      results.render(data, ms, prefixes, limit, contentType, raw);
       editor.setStatus(statusSummary(data, ms, contentType), 'success');
       logMessage(`Query completed in ${ms} ms`, 'success');
+      logMessage(`Content-Type: ${contentType || 'unknown'}`, 'info');
 
       // Show/hide map tab based on geometry presence
       const geomInfo = results.getGeomInfo();

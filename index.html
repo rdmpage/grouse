@@ -131,6 +131,7 @@
           <div id="results-tabs" role="tablist">
             <button class="results-tab active" role="tab" data-tab="results" aria-selected="true">Table</button>
             <button class="results-tab hidden" role="tab" id="tab-btn-map" data-tab="map" aria-selected="false">Map</button>
+            <button class="results-tab" role="tab" data-tab="response" aria-selected="false">Response</button>
             <button class="results-tab" role="tab" data-tab="messages" aria-selected="false">Messages</button>
           </div>
           <div class="results-actions">
@@ -153,6 +154,9 @@
         <div id="results-content">
           <div id="tab-results" class="tab-panel active" role="tabpanel">
             <div class="results-placeholder">Run a query to see results.</div>
+          </div>
+          <div id="tab-response" class="tab-panel" role="tabpanel" hidden>
+            <pre id="response-pre" class="response-pre"></pre>
           </div>
           <div id="tab-messages" class="tab-panel" role="tabpanel" hidden>
             <div id="messages-log" class="messages-log"></div>

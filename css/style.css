@@ -1018,3 +1018,23 @@ input:focus, textarea:focus {
   --validation-msg-bg:        #fff0f0;
   --modal-shadow:             rgba(0, 0, 0, 0.15);
 }
+
+/* ── Response tab ─────────────────────────────────────────────────────────── */
+
+#tab-response {
+  padding: 0;
+  overflow: hidden;
+}
+
+.response-pre {
+  margin: 0;
+  padding: 12px;
+  height: 100%;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-all;
+  box-sizing: border-box;
+}
