@@ -342,6 +342,7 @@ class ResultsView {
       case 'turtle':   return this._displayRdfText(quads, ms, 'Turtle');
       case 'ntriples': return this._displayRdfText(quads, ms, 'N-Triples');
       case 'jsonld':   return this._displayJsonLd(quads, ms);
+      case 'graph':    return this._displayRdfGraph(quads, ms);
       default:         return this._displayRdfTriples(quads, ms);
     }
   }
@@ -378,6 +379,132 @@ class ResultsView {
     if (term.language)  return `${val}@${term.language}`;
     if (term.datatype)  return `${val}^^${this._shortenUri(term.datatype.value)}`;
     return val;
+  }
+
+  // Human-readable label for a node in the graph (no angle brackets, truncated).
+  _n3TermLabel(term) {
+    if (term.termType === 'NamedNode') {
+      const short = this._shortenUri(term.value);
+      if (short !== term.value) return short;
+      const h = term.value.lastIndexOf('#');
+      const s = term.value.lastIndexOf('/');
+      const cut = Math.max(h, s);
+      if (cut > 0 && cut < term.value.length - 1) return term.value.slice(cut + 1);
+      return term.value;
+    }
+    if (term.termType === 'BlankNode') return '_:' + term.value;
+    const v = term.value;
+    return v.length > 60 ? v.slice(0, 57) + '…' : v;
+  }
+
+  // ── Mermaid graph view ────────────────────────────────────────────────────
+
+  _displayRdfGraph(quads, ms) {
+    if (!window.mermaid) {
+      this._tabResults.innerHTML = '<div class="results-placeholder">Mermaid not loaded — graph view unavailable.</div>';
+      return;
+    }
+    if (quads.length === 0) {
+      this._tabResults.innerHTML = '<div class="results-placeholder">No triples to visualise.</div>';
+      return;
+    }
+
+    // Identify the most-frequent subject as the "main" resource
+    const freq = new Map();
+    for (const q of quads) freq.set(q.subject.value, (freq.get(q.subject.value) || 0) + 1);
+    const mainSubjVal = [...freq.entries()].sort((a, b) => b[1] - a[1])[0][0];
+
+    // Node registry: unique key → { id, type }
+    const nodeReg  = new Map();
+    const predReg  = new Map();   // `subjValue||predValue` → predicate-node id
+    const edges    = [];
+    let   seq      = 0;
+
+    const termKey  = (term) => term.termType + '|' + term.value;
+    const termType = (term) => {
+      if (term.termType === 'Literal')   return 'literal';
+      if (term.value    === mainSubjVal) return 'main';
+      return 'uri';
+    };
+    const getNode  = (term, forceKey) => {
+      const key = forceKey ?? termKey(term);
+      if (!nodeReg.has(key)) nodeReg.set(key, { id: `n${seq++}`, type: termType(term), term });
+      return nodeReg.get(key);
+    };
+
+    for (const quad of quads) {
+      const sNode = getNode(quad.subject);
+
+      // One predicate-node per unique (subject, predicate) pair
+      const spKey = quad.subject.value + '||' + quad.predicate.value;
+      if (!predReg.has(spKey)) {
+        predReg.set(spKey, { id: `p${seq++}`, label: this._shortenUri(quad.predicate.value) });
+        edges.push({ from: sNode.id, to: predReg.get(spKey).id });
+      }
+      const pNode = predReg.get(spKey);
+
+      // Literals get a unique node per occurrence; URIs/BNodes are shared
+      const oKey  = quad.object.termType === 'Literal' ? `lit|${seq}` : termKey(quad.object);
+      const oNode = getNode(quad.object, oKey);
+      edges.push({ from: pNode.id, to: oNode.id });
+    }
+
+    // Escape text for Mermaid quoted labels
+    const ml = (s) => '"' + String(s).replace(/"/g, '#quot;').replace(/\n|\r/g, ' ') + '"';
+
+    const lines = ['graph LR'];
+
+    // Declare subject/object nodes
+    for (const node of nodeReg.values()) {
+      const label = this._n3TermLabel(node.term);
+      if (node.type === 'literal') lines.push(`  ${node.id}(${ml(label)})`);   // rounded rect
+      else                         lines.push(`  ${node.id}((${ml(label)}))`); // circle
+    }
+
+    // Declare predicate nodes (rectangles)
+    for (const pn of predReg.values()) lines.push(`  ${pn.id}[${ml(pn.label)}]`);
+
+    // Edges
+    for (const e of edges) lines.push(`  ${e.from} --> ${e.to}`);
+
+    // Styles matching the SciGraph look
+    lines.push('  classDef main     fill:#fffde7,stroke:#888,stroke-width:2px,color:#333');
+    lines.push('  classDef uri      fill:#5b9bd5,stroke:#2672b0,color:#fff');
+    lines.push('  classDef literal  fill:#e3f2fd,stroke:#90caf9,color:#1a237e');
+    lines.push('  classDef predNode fill:#f1f8e9,stroke:#4caf50,stroke-width:2px,color:#1b5e20');
+
+    const cls = (type) => [...nodeReg.values()].filter(n => n.type === type).map(n => n.id).join(',');
+    if (cls('main'))    lines.push(`  class ${cls('main')}    main`);
+    if (cls('uri'))     lines.push(`  class ${cls('uri')}     uri`);
+    if (cls('literal')) lines.push(`  class ${cls('literal')} literal`);
+    const pIds = [...predReg.values()].map(n => n.id).join(',');
+    if (pIds) lines.push(`  class ${pIds} predNode`);
+
+    const definition = lines.join('\n');
+
+    this._tabResults.innerHTML = `<div id="mermaid-out" class="mermaid-graph-wrap"></div>${this._footerHTML(quads.length, ms)}`;
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+                || (!document.documentElement.getAttribute('data-theme')
+                    && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+    mermaid.initialize({
+      startOnLoad:   false,
+      theme:         isDark ? 'dark' : 'default',
+      flowchart:     { curve: 'basis', useMaxWidth: true },
+      securityLevel: 'loose',
+    });
+
+    mermaid.render('mg' + Date.now(), definition)
+      .then(({ svg }) => {
+        const el = document.getElementById('mermaid-out');
+        if (el) el.innerHTML = svg;
+      })
+      .catch(err => {
+        const el = document.getElementById('mermaid-out');
+        if (el) el.innerHTML =
+          `<details style="padding:12px"><summary style="cursor:pointer;color:var(--accent)">Graph render error: ${this._escape(err.message)}</summary><pre style="font-size:12px;margin-top:8px">${this._escape(definition)}</pre></details>`;
+      });
   }
 
   _displayRdfText(quads, ms, format) {

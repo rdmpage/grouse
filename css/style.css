@@ -1038,3 +1038,19 @@ input:focus, textarea:focus {
   word-break: break-all;
   box-sizing: border-box;
 }
+
+/* ─── Mermaid graph view ─────────────────────────────────────────────────── */
+
+.mermaid-graph-wrap {
+  width: 100%;
+  min-height: 300px;
+  overflow: auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.mermaid-graph-wrap svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
