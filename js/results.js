@@ -467,15 +467,15 @@ class ResultsView {
     // Edges
     for (const e of edges) lines.push(`  ${e.from} --> ${e.to}`);
 
-    // Styles matching the SciGraph look
-    lines.push('  classDef main     fill:#fffde7,stroke:#888,stroke-width:2px,color:#333');
-    lines.push('  classDef uri      fill:#5b9bd5,stroke:#2672b0,color:#fff');
-    lines.push('  classDef literal  fill:#e3f2fd,stroke:#90caf9,color:#1a237e');
+    // Styles matching the SciGraph look — single space between IDs and class name (parser is strict)
+    lines.push('  classDef main fill:#fffde7,stroke:#888,stroke-width:2px,color:#333');
+    lines.push('  classDef uri fill:#5b9bd5,stroke:#2672b0,color:#fff');
+    lines.push('  classDef literal fill:#e3f2fd,stroke:#90caf9,color:#1a237e');
     lines.push('  classDef predNode fill:#f1f8e9,stroke:#4caf50,stroke-width:2px,color:#1b5e20');
 
     const cls = (type) => [...nodeReg.values()].filter(n => n.type === type).map(n => n.id).join(',');
-    if (cls('main'))    lines.push(`  class ${cls('main')}    main`);
-    if (cls('uri'))     lines.push(`  class ${cls('uri')}     uri`);
+    if (cls('main'))    lines.push(`  class ${cls('main')} main`);
+    if (cls('uri'))     lines.push(`  class ${cls('uri')} uri`);
     if (cls('literal')) lines.push(`  class ${cls('literal')} literal`);
     const pIds = [...predReg.values()].map(n => n.id).join(',');
     if (pIds) lines.push(`  class ${pIds} predNode`);
