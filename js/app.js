@@ -145,7 +145,7 @@
       const limit    = limitVal === '' ? 0 : parseInt(limitVal, 10);
 
       results.render(data, ms, prefixes, limit, contentType);
-      editor.setStatus(statusSummary(data, ms), 'success');
+      editor.setStatus(statusSummary(data, ms, contentType), 'success');
       logMessage(`Query completed in ${ms} ms`, 'success');
 
       // Show/hide map tab based on geometry presence
@@ -175,7 +175,11 @@
     }
   }
 
-  function statusSummary(data, ms) {
+  function statusSummary(data, ms, contentType) {
+    if (typeof data !== 'object' || data === null) {
+      // RDF text result (Turtle, N-Triples, etc.)
+      return `RDF — ${formatMs(ms)}`;
+    }
     if (typeof data.boolean === 'boolean') return `ASK → ${data.boolean} — ${formatMs(ms)}`;
     if (data.results?.bindings) {
       const n = data.results.bindings.length;
