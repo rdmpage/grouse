@@ -141,7 +141,7 @@
       const prefixes = extractPrefixes(query);
 
       const limitEl  = document.getElementById('row-limit');
-      const limitVal = limitEl ? limitEl.value : '10';
+      const limitVal = limitEl ? limitEl.value : '1000';
       const limit    = limitVal === '' ? 0 : parseInt(limitVal, 10);
 
       results.render(data, ms, prefixes, limit);

@@ -51,7 +51,7 @@ class ResultsView {
    * @param {object}        prefixes PREFIX map extracted from the query.
    * @param {number}        limit    Max rows to display (0 = no limit).
    */
-  render(data, ms, prefixes = {}, limit = 10) {
+  render(data, ms, prefixes = {}, limit = 1000) {
     this._queryPrefixes = prefixes;   // from PREFIX declarations in the query
     this._lastResults = null;
     this._btnExport.classList.add('hidden');
@@ -136,7 +136,7 @@ class ResultsView {
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
-  _renderSelect(data, ms, limit = 10) {
+  _renderSelect(data, ms, limit = 1000) {
     const vars        = data.head.vars;
     const allBindings = data.results.bindings;
     const totalCount  = allBindings.length;
