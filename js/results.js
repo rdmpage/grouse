@@ -495,16 +495,17 @@ class ResultsView {
       securityLevel: 'loose',
     });
 
-    mermaid.render('mg' + Date.now(), definition)
-      .then(({ svg }) => {
+    // Mermaid v9 uses a callback, not a Promise.
+    try {
+      mermaid.render('mg' + Date.now(), definition, (svg) => {
         const el = document.getElementById('mermaid-out');
         if (el) el.innerHTML = svg;
-      })
-      .catch(err => {
-        const el = document.getElementById('mermaid-out');
-        if (el) el.innerHTML =
-          `<details style="padding:12px"><summary style="cursor:pointer;color:var(--accent)">Graph render error: ${this._escape(err.message)}</summary><pre style="font-size:12px;margin-top:8px">${this._escape(definition)}</pre></details>`;
       });
+    } catch (err) {
+      const el = document.getElementById('mermaid-out');
+      if (el) el.innerHTML =
+        `<details style="padding:12px"><summary style="cursor:pointer;color:var(--accent)">Graph render error: ${this._escape(err.message)}</summary><pre style="font-size:12px;margin-top:8px">${this._escape(definition)}</pre></details>`;
+    }
   }
 
   _displayRdfText(quads, ms, format) {
