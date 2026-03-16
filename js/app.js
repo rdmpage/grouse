@@ -114,6 +114,12 @@
 
   // ── Schema queries ─────────────────────────────────────────────────────────
 
+  /** Show or hide the row-limit label and dropdown. */
+  function setRowLimitVisible(visible) {
+    document.getElementById('row-limit').classList.toggle('hidden', !visible);
+    document.querySelector('label[for="row-limit"]').classList.toggle('hidden', !visible);
+  }
+
   /**
    * Run a SPARQL query silently (no results-pane side-effects).
    * Used by SchemaManager for types and properties queries.
@@ -129,15 +135,15 @@
    */
   async function runSchemaPreview(sparql, typeLabel) {
     results.clear();
+    setRowLimitVisible(false);
     document.getElementById('tab-btn-map').classList.add('hidden');
     logMessage(`Schema preview: ${typeLabel}`, 'info');
 
     const t0 = performance.now();
     try {
       const { data, contentType, raw } = await endpoint.query(sparql);
-      const ms    = Math.round(performance.now() - t0);
-      const limit = parseInt(document.getElementById('row-limit').value || '1000', 10);
-      results.render(data, ms, {}, limit, contentType, raw);
+      const ms = Math.round(performance.now() - t0);
+      results.render(data, ms, {}, 0, contentType, raw);
       setResultsTab('results');
       logMessage(`Schema preview completed in ${ms} ms`, 'success');
     } catch (err) {
@@ -174,6 +180,7 @@
     editor.setRunning(true);
     editor.setStatus('Running…', 'running');
     results.clear();
+    setRowLimitVisible(true);
     document.getElementById('tab-btn-map').classList.add('hidden');
     logMessage(`Running query on ${endpoint.getUrl()}`, 'info');
 
