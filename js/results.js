@@ -8,6 +8,10 @@
  *   Errors  → error message display
  */
 
+// Maximum number of triples (post-filter) allowed in the graph view.
+// Beyond this the vis-network layout becomes extremely slow and can crash the tab.
+const MAX_GRAPH_TRIPLES = 1000;
+
 // Well-known prefix map: namespace URI → display prefix.
 // Defined once at module level so it isn't rebuilt on every _shortenUri call.
 const BUILTIN_PREFIXES = {
@@ -109,6 +113,10 @@ class ResultsView {
     this._btnExport.classList.add('hidden');
     this._showRdfControls(false);
     this._setTableTabLabel('Table');
+    // Always reset to the default (non-graph) format so a new query never
+    // auto-triggers an expensive graph build from a previous selection.
+    const fmtEl = document.getElementById('rdf-format');
+    if (fmtEl) fmtEl.value = 'triples';
     this._tabResults.classList.remove('graph-active');
     this._tabResults.innerHTML = '<div class="results-placeholder">Run a query to see results.</div>';
     const responsePre = document.getElementById('response-pre');
@@ -418,6 +426,11 @@ class ResultsView {
 
     if (quads.length === 0) {
       this._tabResults.innerHTML = '<div class="results-placeholder">No triples to visualise.</div>';
+      return;
+    }
+
+    if (quads.length > MAX_GRAPH_TRIPLES) {
+      this._tabResults.innerHTML = `<div class="results-placeholder">Graph view is limited to ${MAX_GRAPH_TRIPLES.toLocaleString()} triples — this result has ${quads.length.toLocaleString()} after filtering. Switch to Triples or Turtle view.</div>`;
       return;
     }
 
