@@ -349,26 +349,35 @@ class ResultsView {
   _displayRdfTriples(quads, ms) {
     const count = quads.length;
     if (count === 0) {
-      this._tabResults.innerHTML = `<div class="results-placeholder">Query returned no triples.</div>${this._footerHTML(0, ms)}`;
+      this._tabResults.innerHTML = `<div class="results-placeholder">Query returned no triples.</div>`;
       return;
     }
 
-    const thead = '<tr><th>Subject</th><th>Predicate</th><th>Object</th></tr>';
-    const tbody = quads.map(q => `
-      <tr>
-        <td>${this._renderN3Term(q.subject)}</td>
-        <td>${this._renderN3Term(q.predicate)}</td>
-        <td>${this._renderN3Term(q.object)}</td>
-      </tr>`).join('');
+    // Render as tab-separated text with prefix-shortened terms — readable but
+    // distinct from the HTML table used for SELECT results.
+    const lines = quads.map(q =>
+      [q.subject, q.predicate, q.object].map(t => this._n3TermToText(t)).join('\t')
+    ).join('\n');
 
     this._tabResults.innerHTML = `
-      <div class="results-table-wrap">
-        <table class="results-table">
-          <thead>${thead}</thead>
-          <tbody>${tbody}</tbody>
-        </table>
+      <div style="padding:12px;">
+        <pre style="font-family:var(--font-mono);font-size:13px;color:var(--text);white-space:pre;overflow-x:auto;">${this._escape(lines)}</pre>
         ${this._footerHTML(count, ms)}
       </div>`;
+  }
+
+  // Serialise an N3 term to a short readable string (prefixed URIs, quoted literals).
+  _n3TermToText(term) {
+    if (term.termType === 'NamedNode') {
+      const short = this._shortenUri(term.value);
+      return short !== term.value ? short : `<${term.value}>`;
+    }
+    if (term.termType === 'BlankNode') return `_:${term.value}`;
+    // Literal
+    const val = `"${term.value}"`;
+    if (term.language)  return `${val}@${term.language}`;
+    if (term.datatype)  return `${val}^^${this._shortenUri(term.datatype.value)}`;
+    return val;
   }
 
   _displayRdfText(quads, ms, format) {
