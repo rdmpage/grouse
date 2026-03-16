@@ -397,11 +397,11 @@ class ResultsView {
     return v.length > 60 ? v.slice(0, 57) + '…' : v;
   }
 
-  // ── Mermaid graph view ────────────────────────────────────────────────────
-
+  // ── Graph view (vis-network) ───────────────────────────────────────────────
+  // Mermaid.js was tried first — see git history if you want to restore it.
   _displayRdfGraph(quads, ms) {
-    if (!window.mermaid) {
-      this._tabResults.innerHTML = '<div class="results-placeholder">Mermaid not loaded — graph view unavailable.</div>';
+    if (!window.vis) {
+      this._tabResults.innerHTML = '<div class="results-placeholder">Vis.js not loaded — graph view unavailable.</div>';
       return;
     }
     if (quads.length === 0) {
@@ -409,103 +409,114 @@ class ResultsView {
       return;
     }
 
-    // Identify the most-frequent subject as the "main" resource
+    // Most-frequent subject becomes the "main" (light-yellow) node
     const freq = new Map();
     for (const q of quads) freq.set(q.subject.value, (freq.get(q.subject.value) || 0) + 1);
     const mainSubjVal = [...freq.entries()].sort((a, b) => b[1] - a[1])[0][0];
 
-    // Node registry: unique key → { id, type }
-    const nodeReg  = new Map();
-    const predReg  = new Map();   // `subjValue||predValue` → predicate-node id
-    const edges    = [];
-    let   seq      = 0;
+    const nodeData = [];
+    const edgeData = [];
+    const nodeReg  = new Map();  // URI/BNode value → true (dedup)
+    const predReg  = new Map();  // `subjVal||predVal` → predicate-node id
 
-    const termKey  = (term) => term.termType + '|' + term.value;
-    const termType = (term) => {
-      if (term.termType === 'Literal')   return 'literal';
-      if (term.value    === mainSubjVal) return 'main';
-      return 'uri';
-    };
-    const getNode  = (term, forceKey) => {
-      const key = forceKey ?? termKey(term);
-      if (!nodeReg.has(key)) nodeReg.set(key, { id: `n${seq++}`, type: termType(term), term });
-      return nodeReg.get(key);
-    };
+    // Main subject node
+    const mainTerm = quads.find(q => q.subject.value === mainSubjVal).subject;
+    nodeData.push({ id: mainSubjVal, label: this._n3TermLabel(mainTerm), group: 'primary_uri' });
+    nodeReg.set(mainSubjVal, true);
 
     for (const quad of quads) {
-      const sNode = getNode(quad.subject);
+      const sId = quad.subject.value;
 
-      // One predicate-node per unique (subject, predicate) pair
-      const spKey = quad.subject.value + '||' + quad.predicate.value;
-      if (!predReg.has(spKey)) {
-        predReg.set(spKey, { id: `p${seq++}`, label: this._shortenUri(quad.predicate.value) });
-        edges.push({ from: sNode.id, to: predReg.get(spKey).id });
+      // Additional subject nodes for multi-subject graphs
+      if (!nodeReg.has(sId)) {
+        nodeReg.set(sId, true);
+        nodeData.push({ id: sId, label: this._n3TermLabel(quad.subject), group: 'uri' });
       }
-      const pNode = predReg.get(spKey);
 
-      // Literals get a unique node per occurrence; URIs/BNodes are shared
-      const oKey  = quad.object.termType === 'Literal' ? `lit|${seq}` : termKey(quad.object);
-      const oNode = getNode(quad.object, oKey);
-      edges.push({ from: pNode.id, to: oNode.id });
+      // One predicate-node (box) per unique (subject, predicate) pair
+      const spKey = sId + '||' + quad.predicate.value;
+      if (!predReg.has(spKey)) {
+        const predId = `PRED:${predReg.size}`;
+        predReg.set(spKey, predId);
+        nodeData.push({ id: predId, label: this._shortenUri(quad.predicate.value), group: 'predicate_uri' });
+        edgeData.push({ from: sId, to: predId });
+      }
+      const pId = predReg.get(spKey);
+
+      // Object — literals unique per occurrence; URIs/BNodes shared
+      let oId;
+      if (quad.object.termType === 'Literal') {
+        oId = `LIT:${edgeData.length}`;
+        nodeData.push({ id: oId, label: this._n3TermLabel(quad.object), group: 'literal' });
+      } else {
+        oId = quad.object.value;
+        if (!nodeReg.has(oId)) {
+          nodeReg.set(oId, true);
+          nodeData.push({ id: oId, label: this._n3TermLabel(quad.object), group: 'uri' });
+        }
+      }
+      edgeData.push({ from: pId, to: oId });
     }
 
-    // Escape text for Mermaid quoted labels
-    const ml = (s) => '"' + String(s).replace(/"/g, '#quot;').replace(/\n|\r/g, ' ') + '"';
+    // Fill available panel height (min 400 px)
+    const h = Math.max(this._tabResults.clientHeight || 0, 400);
+    this._tabResults.innerHTML = `<div id="vis-net" style="width:100%;height:${h}px;"></div>`;
 
-    const lines = ['graph LR'];
-
-    // Declare subject/object nodes
-    for (const node of nodeReg.values()) {
-      const label = this._n3TermLabel(node.term);
-      if (node.type === 'literal') lines.push(`  ${node.id}(${ml(label)})`);   // rounded rect
-      else                         lines.push(`  ${node.id}((${ml(label)}))`); // circle
-    }
-
-    // Declare predicate nodes (rectangles)
-    for (const pn of predReg.values()) lines.push(`  ${pn.id}[${ml(pn.label)}]`);
-
-    // Edges
-    for (const e of edges) lines.push(`  ${e.from} --> ${e.to}`);
-
-    // Styles matching the SciGraph look — single space between IDs and class name (parser is strict)
-    lines.push('  classDef main fill:#fffde7,stroke:#888,stroke-width:2px,color:#333');
-    lines.push('  classDef uri fill:#5b9bd5,stroke:#2672b0,color:#fff');
-    lines.push('  classDef literal fill:#e3f2fd,stroke:#90caf9,color:#1a237e');
-    lines.push('  classDef predNode fill:#f1f8e9,stroke:#4caf50,stroke-width:2px,color:#1b5e20');
-
-    const cls = (type) => [...nodeReg.values()].filter(n => n.type === type).map(n => n.id).join(',');
-    if (cls('main'))    lines.push(`  class ${cls('main')} main`);
-    if (cls('uri'))     lines.push(`  class ${cls('uri')} uri`);
-    if (cls('literal')) lines.push(`  class ${cls('literal')} literal`);
-    const pIds = [...predReg.values()].map(n => n.id).join(',');
-    if (pIds) lines.push(`  class ${pIds} predNode`);
-
-    const definition = lines.join('\n');
-
-    this._tabResults.innerHTML = `<div id="mermaid-out" class="mermaid-graph-wrap"></div>${this._footerHTML(quads.length, ms)}`;
-
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
-                || (!document.documentElement.getAttribute('data-theme')
-                    && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-    mermaid.initialize({
-      startOnLoad:   false,
-      theme:         isDark ? 'dark' : 'default',
-      flowchart:     { curve: 'basis', useMaxWidth: true },
-      securityLevel: 'loose',
-    });
-
-    // Mermaid v9 uses a callback, not a Promise.
-    try {
-      mermaid.render('mg' + Date.now(), definition, (svg) => {
-        const el = document.getElementById('mermaid-out');
-        if (el) el.innerHTML = svg;
-      });
-    } catch (err) {
-      const el = document.getElementById('mermaid-out');
-      if (el) el.innerHTML =
-        `<details style="padding:12px"><summary style="cursor:pointer;color:var(--accent)">Graph render error: ${this._escape(err.message)}</summary><pre style="font-size:12px;margin-top:8px">${this._escape(definition)}</pre></details>`;
-    }
+    new vis.Network(
+      document.getElementById('vis-net'),
+      { nodes: new vis.DataSet(nodeData), edges: new vis.DataSet(edgeData) },
+      {
+        physics: {
+          barnesHut:     { gravitationalConstant: -30000 },
+          stabilization: { iterations: 2500 },
+        },
+        interaction: {
+          hover:             true,
+          navigationButtons: true,
+          zoomView:          false,
+        },
+        nodes: {
+          shape:       'dot',
+          size:         25,
+          font:        { size: 14, color: '#333' },
+          borderWidth:  2,
+        },
+        edges: {
+          color:  'gray',
+          smooth: false,
+          length: 150,
+          arrows: { to: { enabled: true, scaleFactor: 0.3, type: 'arrow' } },
+        },
+        groups: {
+          primary_uri: {
+            color: { border: '#325D94', background: 'lightyellow',
+                     highlight: { border: '#325D94', background: '#FFF59D' },
+                     hover:     { border: '#325D94', background: '#FFF59D' } },
+            size: 30,
+            font: { size: 18, color: '#333' },
+          },
+          predicate_uri: {
+            shape: 'box',
+            color: { background: 'white', border: 'lightgreen',
+                     highlight: { background: 'white', border: 'red' },
+                     hover:     { background: 'white', border: '#F44336' } },
+            font: { size: 12, color: '#1b5e20' },
+          },
+          uri: {
+            color: { border: '#2672b0', background: '#5b9bd5',
+                     highlight: { border: '#1a4d7a', background: '#3d7eb5' },
+                     hover:     { border: '#1a4d7a', background: '#3d7eb5' } },
+            font: { size: 13, color: '#fff' },
+          },
+          literal: {
+            color: { border: '#90caf9', background: '#e3f2fd',
+                     highlight: { border: '#64b5f6', background: '#bbdefb' },
+                     hover:     { border: '#64b5f6', background: '#bbdefb' } },
+            font: { size: 12, color: '#1a237e' },
+          },
+        },
+      }
+    );
   }
 
   _displayRdfText(quads, ms, format) {
