@@ -38,9 +38,9 @@ ORDER BY DESC(?count)`;
 
 // Fallback used when a type has no discoverable literal properties
 const SCHEMA_SAMPLE_QUERY_FALLBACK = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-SELECT ?s ?p ?o WHERE {
-  { SELECT ?s WHERE { ?s rdf:type <$URI> } LIMIT 10 }
-  ?s ?p ?o .
+SELECT ?resourceURI ?p ?o WHERE {
+  { SELECT ?resourceURI WHERE { ?resourceURI rdf:type <$URI> } LIMIT 10 }
+  ?resourceURI ?p ?o .
   FILTER(isLiteral(?o))
 }`;
 
@@ -162,7 +162,7 @@ class SchemaManager {
    * 10 sampled entities of the given type.
    */
   _buildPivotedQuery(typeUri, propUris) {
-    const used = new Set(['s']);
+    const used = new Set(['resourceURI']);
     const vars = propUris.map(uri => {
       // Derive a valid SPARQL variable name from the property's local name
       let base = this._localName(uri)
@@ -177,12 +177,12 @@ class SchemaManager {
 
     const selectVars = vars.map(v => `?${v.name}`).join(' ');
     const optionals  = vars.map(v =>
-      `  OPTIONAL { ?s <${v.uri}> ?${v.name} }`
+      `  OPTIONAL { ?resourceURI <${v.uri}> ?${v.name} }`
     ).join('\n');
 
     return `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-SELECT ?s ${selectVars} WHERE {
-  { SELECT ?s WHERE { ?s rdf:type <${typeUri}> } LIMIT 10 }
+SELECT ?resourceURI ${selectVars} WHERE {
+  { SELECT ?resourceURI WHERE { ?resourceURI rdf:type <${typeUri}> } LIMIT 10 }
 ${optionals}
 }`;
   }
