@@ -473,7 +473,7 @@ class ResultsView {
         interaction: {
           hover:             true,
           navigationButtons: true,
-          zoomView:          false,
+          zoomView:          true,
         },
         nodes: {
           shape:       'dot',
