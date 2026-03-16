@@ -213,10 +213,12 @@ class ResultsView {
 
     this._tabResults.innerHTML = `
       <div class="results-table-wrap">
-        <table class="results-table">
-          <thead>${thead}</thead>
-          <tbody>${tbody}</tbody>
-        </table>
+        <div class="results-table-scroll">
+          <table class="results-table">
+            <thead>${thead}</thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>
         ${this._footerHTML(totalCount, ms, displayCount, truncated)}
       </div>`;
 

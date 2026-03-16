@@ -688,8 +688,16 @@ input:focus, textarea:focus {
 /* ── Results table ── */
 
 .results-table-wrap {
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   height: 100%;
+}
+
+.results-table-scroll {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
 }
 
 .results-table {
@@ -770,8 +778,7 @@ input:focus, textarea:focus {
 /* ── Results footer (count / timing) ── */
 
 .results-footer {
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   padding: 5px 12px;
   background: var(--bg-raised);
   border-top: 1px solid var(--border);
