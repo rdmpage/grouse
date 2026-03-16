@@ -1068,3 +1068,92 @@ input:focus, textarea:focus {
   width: 100%;
   height: 100%;
 }
+
+/* ─── Multi-cell query editor ─────────────────────────────────────────────── */
+
+#cells-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  min-height: 0;
+}
+
+.query-cell {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.query-cell.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.cell-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cell-num {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  min-width: 24px;
+}
+
+.cell-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  flex: 1;
+}
+
+.cell-del {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.query-cell:hover .cell-del {
+  opacity: 1;
+}
+
+.cell-del:hover {
+  color: var(--danger, #e05c5c);
+}
+
+.cell-textarea {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.cell-textarea:focus {
+  background: var(--bg-input);
+}
