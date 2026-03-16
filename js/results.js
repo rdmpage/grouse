@@ -228,8 +228,8 @@ class ResultsView {
 
   _renderRaw(text, ms) {
     this._tabResults.innerHTML = `
-      <div style="padding:12px;">
-        <pre style="font-family:var(--font-mono);font-size:12px;color:var(--text);white-space:pre-wrap;word-break:break-all;">${this._escape(text)}</pre>
+      <div class="rdf-text-wrap">
+        <pre class="rdf-pre">${this._escape(text)}</pre>
         ${this._footerHTML(null, ms)}
       </div>`;
   }
@@ -303,7 +303,7 @@ class ResultsView {
         this._parseAndDisplayRdf(text, ms, 'application/ld+json');
       } else {
         try {
-          this._tabResults.innerHTML = `<div style="padding:12px;"><pre style="font-family:var(--font-mono);font-size:13px;color:var(--text);white-space:pre-wrap;">${this._escape(JSON.stringify(JSON.parse(text), null, 2))}</pre>${this._footerHTML(null, ms)}</div>`;
+          this._tabResults.innerHTML = `<div class="rdf-text-wrap"><pre class="rdf-pre">${this._escape(JSON.stringify(JSON.parse(text), null, 2))}</pre>${this._footerHTML(null, ms)}</div>`;
         } catch {
           this._renderRaw(text, ms);
         }
@@ -362,8 +362,8 @@ class ResultsView {
     ).join('\n');
 
     this._tabResults.innerHTML = `
-      <div style="padding:12px;">
-        <pre style="font-family:var(--font-mono);font-size:13px;color:var(--text);white-space:pre;overflow-x:auto;">${this._escape(lines)}</pre>
+      <div class="rdf-text-wrap">
+        <pre class="rdf-pre no-wrap">${this._escape(lines)}</pre>
         ${this._footerHTML(count, ms)}
       </div>`;
   }
@@ -553,8 +553,8 @@ class ResultsView {
     writer.end((err, result) => {
       const text = err ? '# Serialisation error: ' + err.message : result;
       this._tabResults.innerHTML = `
-        <div style="padding:12px;">
-          <pre style="font-family:var(--font-mono);font-size:13px;color:var(--text);white-space:pre-wrap;word-break:break-all;">${this._escape(text)}</pre>
+        <div class="rdf-text-wrap">
+          <pre class="rdf-pre">${this._escape(text)}</pre>
           ${this._footerHTML(quads.length, ms)}
         </div>`;
     });
@@ -593,8 +593,8 @@ class ResultsView {
     const text   = JSON.stringify(jsonld, null, 2);
 
     this._tabResults.innerHTML = `
-      <div style="padding:12px;">
-        <pre style="font-family:var(--font-mono);font-size:13px;color:var(--text);white-space:pre-wrap;">${this._escape(text)}</pre>
+      <div class="rdf-text-wrap">
+        <pre class="rdf-pre">${this._escape(text)}</pre>
         ${this._footerHTML(quads.length, ms)}
       </div>`;
   }
