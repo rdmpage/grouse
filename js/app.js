@@ -146,7 +146,7 @@
 
       results.render(data, ms, prefixes, limit, contentType, raw);
       editor.setStatus(statusSummary(data, ms, contentType), 'success');
-      editor.newCell();
+      editor.newCellIfNeeded();
       logMessage(`Query completed in ${ms} ms`, 'success');
       logMessage(`Content-Type: ${contentType || 'unknown'}`, 'info');
 

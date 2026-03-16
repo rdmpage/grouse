@@ -172,6 +172,19 @@ class QueryEditor {
     }
   }
 
+  /**
+   * Append a new empty cell only when it makes sense after a successful run:
+   * - The active cell must be the last cell (i.e. we ran from "the bottom").
+   * - The last cell must not already be empty (no point adding another blank).
+   */
+  newCellIfNeeded() {
+    if (this._cells.length === 0) return;
+    const last = this._cells[this._cells.length - 1];
+    const isActiveLast = last.id === this._activeId;
+    const lastHasContent = last.ta.value.trim() !== '';
+    if (isActiveLast && lastHasContent) this.newCell();
+  }
+
   format() {
     const query = this.getQuery().trim();
     if (!query) return;
