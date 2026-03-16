@@ -38,7 +38,7 @@ Then open `http://localhost:8000` in your browser. Any static server works — P
 | Wikidata | `https://query.wikidata.org/sparql` |
 | DBpedia | `https://dbpedia.org/sparql` |
 | UniProt | `https://sparql.uniprot.org/sparql` |
-| OSM Planet | https://qlever.dev/api/osm-planet |
+| OSM Planet | `https://qlever.dev/api/osm-planet` |
 
 ---
 
