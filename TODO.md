@@ -1,5 +1,55 @@
 # Grouse — Roadmap / TODO
 
+## Phase 2 (remaining) — Pivoted sample table
+
+Currently the sample query returns raw `?s ?p ?o` triples, producing a
+three-column table. Instead, the sample should be displayed as a proper entity
+table where each **literal property becomes a column heading** and each **row is
+one entity**.
+
+### How it works
+
+The properties query (already running on `<details>` open) returns the list of
+`?p` URIs for the type. Once those are known, build a `SELECT` that pivots them
+into columns:
+
+```sparql
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?s ?name ?givenName ?familyName WHERE {
+  { SELECT ?s WHERE { ?s rdf:type <http://schema.org/Person> } LIMIT 10 }
+  OPTIONAL { ?s <http://schema.org/name>       ?name }
+  OPTIONAL { ?s <http://schema.org/givenName>  ?givenName }
+  OPTIONAL { ?s <http://schema.org/familyName> ?familyName }
+}
+```
+
+The variable names (`?name`, `?givenName`, …) are derived from the local name of
+each property URI. The query is built dynamically in `schema.js` from the
+properties list returned by the properties query.
+
+### Implications for the current flow
+
+- The sample query now **depends on the properties list** — it can no longer fire
+  in parallel with the properties query.
+- New sequence on `<details>` open:
+  1. Properties query runs (via `queryDirect`) → sidebar body filled, property
+     URIs stored.
+  2. Pivoted sample query built from property list → fires via `runSchemaPreview`
+     → results pane shows the entity table.
+- If the properties query returns nothing (no literal properties), fall back to
+  the generic `?s ?p ?o` sample query.
+- Column headings in the results table use the property local name (e.g.
+  `givenName`) rather than the full URI.
+
+### Variable-name collisions
+
+Two properties with the same local name but different namespaces (e.g.
+`schema:name` and `dc:name`) would clash as SPARQL variable names. Disambiguate
+by prefixing with a short namespace token or appending an index
+(e.g. `?schema_name`, `?dc_name`).
+
+---
+
 ## Phase 3 — Schema: Relationships view
 
 The schema browser currently shows types and their literal properties. The next
