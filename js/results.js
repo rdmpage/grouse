@@ -109,6 +109,7 @@ class ResultsView {
     this._btnExport.classList.add('hidden');
     this._showRdfControls(false);
     this._setTableTabLabel('Table');
+    this._tabResults.classList.remove('graph-active');
     this._tabResults.innerHTML = '<div class="results-placeholder">Run a query to see results.</div>';
     const responsePre = document.getElementById('response-pre');
     if (responsePre) responsePre.textContent = '';
@@ -469,12 +470,13 @@ class ResultsView {
       edgeData.push({ from: pId, to: oId });
     }
 
-    // Fill available panel height (min 400 px)
-    const h = Math.max(this._tabResults.clientHeight || 0, 400);
-    this._tabResults.innerHTML = `<div id="vis-net" style="width:100%;height:${h}px;"></div>`;
+    // CSS drives the height so the graph always fills the panel.
+    this._tabResults.classList.add('graph-active');
+    this._tabResults.innerHTML = '<div id="vis-net"></div>';
 
-    new vis.Network(
-      document.getElementById('vis-net'),
+    const container = document.getElementById('vis-net');
+    const network   = new vis.Network(
+      container,
       { nodes: new vis.DataSet(nodeData), edges: new vis.DataSet(edgeData) },
       {
         physics: {
@@ -528,6 +530,14 @@ class ResultsView {
         },
       }
     );
+
+    // Keep the canvas filling the panel as the user drags the splitter.
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => {
+        network.setSize('100%', '100%');
+        network.redraw();
+      }).observe(this._tabResults);
+    }
   }
 
   _displayRdfText(quads, ms, format) {
