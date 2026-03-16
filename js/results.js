@@ -429,9 +429,11 @@ class ResultsView {
       return;
     }
 
+    const totalQuads = quads.length;
+    let truncated = false;
     if (quads.length > MAX_GRAPH_TRIPLES) {
-      this._tabResults.innerHTML = `<div class="results-placeholder">Graph view is limited to ${MAX_GRAPH_TRIPLES.toLocaleString()} triples — this result has ${quads.length.toLocaleString()} after filtering. Switch to Triples or Turtle view.</div>`;
-      return;
+      quads = quads.slice(0, MAX_GRAPH_TRIPLES);
+      truncated = true;
     }
 
     // Most-frequent subject becomes the "main" (light-yellow) node
@@ -485,7 +487,9 @@ class ResultsView {
 
     // CSS drives the height so the graph always fills the panel.
     this._tabResults.classList.add('graph-active');
-    this._tabResults.innerHTML = '<div id="vis-net"></div>';
+    this._tabResults.innerHTML = `
+      <div id="vis-net"></div>
+      ${truncated ? `<div class="graph-truncation-notice">Showing first ${MAX_GRAPH_TRIPLES.toLocaleString()} of ${totalQuads.toLocaleString()} triples</div>` : ''}`;
 
     const container = document.getElementById('vis-net');
     const network   = new vis.Network(

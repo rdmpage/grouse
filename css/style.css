@@ -1183,3 +1183,19 @@ input:focus, textarea:focus {
   white-space: pre;
   word-break: normal;
 }
+
+/* ─── Graph truncation notice ──────────────────────────────────────────────── */
+
+.graph-truncation-notice {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  padding: 3px 10px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 10;
+}
