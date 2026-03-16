@@ -128,6 +128,11 @@ class ResultsView {
     this._displayRdf(this._lastQuads, this._lastMs ?? 0, format);
   }
 
+  /** Explicitly set toolbar mode ('select' | 'rdf' | 'none'). */
+  setToolbarMode(mode) {
+    this._showRdfControls(mode);
+  }
+
   /** Re-render the last SELECT result with a new display limit (no re-fetch needed). */
   rerender(limit) {
     if (!this._lastResults) return;
@@ -650,16 +655,29 @@ class ResultsView {
     }
   }
 
-  _showRdfControls(show) {
+  /**
+   * Set toolbar control visibility for the three result modes:
+   *   'select' — show Rows, hide Format
+   *   'rdf'    — show Format, hide Rows
+   *   'none'   — hide both (schema previews, errors, empty state)
+   */
+  _showRdfControls(mode) {
+    // Accept legacy boolean calls (true → 'rdf', false → 'select')
+    if (mode === true)  mode = 'rdf';
+    if (mode === false) mode = 'select';
+
+    const showRdf = mode === 'rdf';
+    const showRow = mode === 'select';
+
     const rdfLabel  = document.getElementById('rdf-format-label');
     const rdfSelect = document.getElementById('rdf-format');
-    const rowLabel  = document.querySelector('.row-limit-label');
+    const rowLabel  = document.getElementById('row-limit-label');
     const rowSelect = document.getElementById('row-limit');
 
-    if (rdfLabel)  rdfLabel.classList.toggle('hidden', !show);
-    if (rdfSelect) rdfSelect.classList.toggle('hidden', !show);
-    if (rowLabel)  rowLabel.classList.toggle('hidden',  show);
-    if (rowSelect) rowSelect.classList.toggle('hidden',  show);
+    if (rdfLabel)  rdfLabel.classList.toggle('hidden', !showRdf);
+    if (rdfSelect) rdfSelect.classList.toggle('hidden', !showRdf);
+    if (rowLabel)  rowLabel.classList.toggle('hidden',  !showRow);
+    if (rowSelect) rowSelect.classList.toggle('hidden',  !showRow);
   }
 
   _setTableTabLabel(label) {
