@@ -30,7 +30,8 @@ class ResultsView {
   constructor() {
     this._tabResults    = document.getElementById('tab-results');
     this._btnExport     = document.getElementById('btn-export-csv');
-    this._lastResults   = null;   // store for CSV export
+    this._lastResults   = null;   // { vars, bindings } — full set, for CSV and rerender
+    this._lastMs        = null;   // query duration, kept for rerender
     this._queryPrefixes = {};     // populated from PREFIX declarations at render time
     this._lastGeomInfo  = null;   // { vars, bindings, geomCols } when WKT found
 
@@ -50,7 +51,7 @@ class ResultsView {
    * @param {object}        prefixes PREFIX map extracted from the query.
    * @param {number}        limit    Max rows to display (0 = no limit).
    */
-  render(data, ms, prefixes = {}, limit = 1000) {
+  render(data, ms, prefixes = {}, limit = 10) {
     this._queryPrefixes = prefixes;   // from PREFIX declarations in the query
     this._lastResults = null;
     this._btnExport.classList.add('hidden');
@@ -88,9 +89,21 @@ class ResultsView {
 
   clear() {
     this._lastResults  = null;
+    this._lastMs       = null;
     this._lastGeomInfo = null;
     this._btnExport.classList.add('hidden');
     this._tabResults.innerHTML = '<div class="results-placeholder">Run a query to see results.</div>';
+  }
+
+  /** Re-render the last SELECT result with a new display limit (no re-fetch needed). */
+  rerender(limit) {
+    if (!this._lastResults) return;
+    const { vars, bindings } = this._lastResults;
+    this._renderSelect(
+      { head: { vars }, results: { bindings } },
+      this._lastMs ?? 0,
+      limit,
+    );
   }
 
   getGeomInfo() {
@@ -123,13 +136,14 @@ class ResultsView {
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
-  _renderSelect(data, ms, limit = 1000) {
+  _renderSelect(data, ms, limit = 10) {
     const vars        = data.head.vars;
     const allBindings = data.results.bindings;
     const totalCount  = allBindings.length;
 
-    // Always store the full result set so CSV export is unaffected by the display limit.
+    // Always store the full result set so CSV export and rerender are unaffected by the display limit.
     this._lastResults = { vars, bindings: allBindings };
+    this._lastMs      = ms;
 
     if (totalCount === 0) {
       this._tabResults.innerHTML = `

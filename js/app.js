@@ -141,7 +141,7 @@
       const prefixes = extractPrefixes(query);
 
       const limitEl  = document.getElementById('row-limit');
-      const limitVal = limitEl ? limitEl.value : '1000';
+      const limitVal = limitEl ? limitEl.value : '10';
       const limit    = limitVal === '' ? 0 : parseInt(limitVal, 10);
 
       results.render(data, ms, prefixes, limit);
@@ -187,6 +187,13 @@
   function formatMs(ms) {
     return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
   }
+
+  // ── Row-limit selector ─────────────────────────────────────────────────────
+
+  document.getElementById('row-limit').addEventListener('change', function () {
+    const limit = this.value === '' ? 0 : parseInt(this.value, 10);
+    results.rerender(limit);
+  });
 
   // ── Results tabs ───────────────────────────────────────────────────────────
 
