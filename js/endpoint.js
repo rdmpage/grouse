@@ -68,7 +68,7 @@ class EndpointManager {
     const queryType = this._detectQueryType(sparql);
     if (!accept) {
       accept = (queryType === 'construct' || queryType === 'describe')
-        ? 'text/turtle'
+        ? 'text/turtle,application/n-triples,application/n-quads,application/ld+json;q=0.9,*/*;q=0.5'
         : 'application/sparql-results+json';
     }
 
@@ -120,14 +120,27 @@ class EndpointManager {
     }
 
     const ct = response.headers.get('content-type') || '';
-    if (ct.includes('json')) {
+    const ctBase = ct.split(';')[0].trim().toLowerCase();
+
+    if (ctBase === 'application/sparql-results+json' || ctBase === 'application/json') {
       const json = await response.json();
-      // Some endpoints return 200 with an error body
       if (json.error) throw new Error(json.error);
-      return json;
-    } else {
-      return await response.text();
+      return { data: json, contentType: ctBase };
     }
+
+    // For RDF or unknown, return text with content-type
+    const text = await response.text();
+
+    // If content-type says JSON but we didn't handle it above, try parsing
+    if (ctBase.includes('json')) {
+      try {
+        const json = JSON.parse(text);
+        if (json.error) throw new Error(json.error);
+        return { data: json, contentType: ctBase };
+      } catch {}
+    }
+
+    return { data: text, contentType: ctBase || 'text/plain' };
   }
 
   _isCrossOrigin() {

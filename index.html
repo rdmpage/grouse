@@ -134,6 +134,13 @@
             <button class="results-tab" role="tab" data-tab="messages" aria-selected="false">Messages</button>
           </div>
           <div class="results-actions">
+            <label class="row-limit-label hidden" id="rdf-format-label" for="rdf-format">Format</label>
+            <select id="rdf-format" class="row-limit-select hidden" title="RDF display format">
+              <option value="triples">Triples</option>
+              <option value="turtle">Turtle</option>
+              <option value="ntriples">N-Triples</option>
+              <option value="jsonld">JSON-LD</option>
+            </select>
             <label class="row-limit-label" for="row-limit">Rows</label>
             <select id="row-limit" class="row-limit-select" title="Limit displayed rows">
               <option value="1000">1,000</option>
@@ -170,6 +177,7 @@
     })();
   </script>
 
+  <script src="lib/n3.min.js"></script>
   <script src="lib/leaflet.min.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/endpoint.js"></script>
