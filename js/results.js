@@ -404,6 +404,17 @@ class ResultsView {
       this._tabResults.innerHTML = '<div class="results-placeholder">Vis.js not loaded — graph view unavailable.</div>';
       return;
     }
+    // Strip rdf:type triples (clutter) and deduplicate before building the graph.
+    const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+    const seen     = new Set();
+    quads = quads.filter(q => {
+      if (q.predicate.value === RDF_TYPE) return false;
+      const key = q.subject.value + '||' + q.predicate.value + '||' + q.object.value;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     if (quads.length === 0) {
       this._tabResults.innerHTML = '<div class="results-placeholder">No triples to visualise.</div>';
       return;
