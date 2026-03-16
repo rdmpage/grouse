@@ -82,6 +82,66 @@ class EndpointManager {
     }
   }
 
+  /**
+   * Execute a SPARQL query without touching the shared abort controller.
+   * Used for background schema queries so they don't cancel each other or
+   * interrupt user queries.
+   */
+  async queryDirect(sparql, accept) {
+    if (!this.url) throw new Error('No endpoint configured. Please connect to an endpoint first.');
+
+    const queryType = this._detectQueryType(sparql);
+    if (!accept) {
+      accept = (queryType === 'construct' || queryType === 'describe')
+        ? 'text/turtle,application/n-triples,application/n-quads,application/ld+json;q=0.9,*/*;q=0.5'
+        : 'application/sparql-results+json';
+    }
+
+    const controller  = new AbortController();
+    const crossOrigin = this._isCrossOrigin();
+    const fetchUrl    = crossOrigin ? 'proxy.php' : this.url;
+    const body        = crossOrigin
+      ? new URLSearchParams({ endpoint: this.url, query: sparql })
+      : new URLSearchParams({ query: sparql });
+
+    let response;
+    try {
+      response = await fetch(fetchUrl, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept':        accept,
+        },
+        body:   body.toString(),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      throw new Error(`Network error: ${err.message}. Check that the endpoint URL is correct and that the server is reachable.`);
+    }
+
+    if (!response.ok) {
+      let detail = '';
+      try { detail = await response.text(); } catch {}
+      throw new Error(`HTTP ${response.status} ${response.statusText}${detail ? ': ' + detail.slice(0, 300) : ''}`);
+    }
+
+    const ct     = response.headers.get('content-type') || '';
+    const ctBase = ct.split(';')[0].trim().toLowerCase();
+    const raw    = await response.text();
+
+    if (ctBase.includes('json')) {
+      let json;
+      try { json = JSON.parse(raw); } catch {
+        return { data: raw, contentType: ctBase, raw };
+      }
+      if (json.error) throw new Error(json.error);
+      return { data: json, contentType: ctBase, raw };
+    }
+
+    return { data: raw, contentType: ctBase || 'text/plain', raw };
+  }
+
   // ── Internal ──────────────────────────────────────────────────────────────
 
   async _fetch(sparql, accept) {

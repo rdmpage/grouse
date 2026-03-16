@@ -28,6 +28,12 @@
     },
   });
 
+  const schema = new SchemaManager({
+    treeEl:       document.getElementById('schema-tree'),
+    onQuery:      runSilentQuery,
+    onSampleType: runSchemaPreview,
+  });
+
   // ── Restore last endpoint URL ──────────────────────────────────────────────
 
   const savedUrl = Storage.get('endpoint_url', '');
@@ -70,6 +76,7 @@
       updateSidebarEndpoint(url, true);
       editor.enable();
       logMessage(`Connected to ${url}`, 'success');
+      schema.load();
     } else {
       setConnectionUI('error');
       logMessage(`Connection failed: ${error}`, 'error');
@@ -82,6 +89,7 @@
     if (status === 'disconnected') {
       editor.disable();
       updateSidebarEndpoint('', false);
+      schema.clear();
       logMessage('Disconnected', 'info');
     }
   });
@@ -102,6 +110,42 @@
     editor.setRunning(false);
     editor.setStatus('Query stopped', '');
     logMessage('Query stopped by user', 'warn');
+  }
+
+  // ── Schema queries ─────────────────────────────────────────────────────────
+
+  /**
+   * Run a SPARQL query silently (no results-pane side-effects).
+   * Used by SchemaManager for types and properties queries.
+   */
+  async function runSilentQuery(sparql) {
+    const { data } = await endpoint.queryDirect(sparql);
+    return data;
+  }
+
+  /**
+   * Run a schema sample query and render the result in the results pane,
+   * exactly like a regular query — but without touching the editor.
+   */
+  async function runSchemaPreview(sparql, typeLabel) {
+    results.clear();
+    document.getElementById('tab-btn-map').classList.add('hidden');
+    logMessage(`Schema preview: ${typeLabel}`, 'info');
+
+    const t0 = performance.now();
+    try {
+      const { data, contentType, raw } = await endpoint.query(sparql);
+      const ms    = Math.round(performance.now() - t0);
+      const limit = parseInt(document.getElementById('row-limit').value || '1000', 10);
+      results.render(data, ms, {}, limit, contentType, raw);
+      setResultsTab('results');
+      logMessage(`Schema preview completed in ${ms} ms`, 'success');
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      results.renderError(err.message);
+      setResultsTab('messages');
+      logMessage(`Schema preview error: ${err.message}`, 'error');
+    }
   }
 
   // ── Query execution ────────────────────────────────────────────────────────
