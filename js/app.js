@@ -140,7 +140,11 @@
       const ms       = Math.round(performance.now() - t0);
       const prefixes = extractPrefixes(query);
 
-      results.render(data, ms, prefixes);
+      const limitEl  = document.getElementById('row-limit');
+      const limitVal = limitEl ? limitEl.value : '1000';
+      const limit    = limitVal === '' ? 0 : parseInt(limitVal, 10);
+
+      results.render(data, ms, prefixes, limit);
       editor.setStatus(statusSummary(data, ms), 'success');
       logMessage(`Query completed in ${ms} ms`, 'success');
 

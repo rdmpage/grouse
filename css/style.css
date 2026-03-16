@@ -631,6 +631,28 @@ input:focus, textarea:focus {
   align-items: center;
 }
 
+.row-limit-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.row-limit-select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  padding: 2px 4px;
+  cursor: pointer;
+  outline: none;
+}
+
+.row-limit-select:focus {
+  border-color: var(--accent);
+}
+
 #results-content {
   flex: 1;
   overflow: hidden;

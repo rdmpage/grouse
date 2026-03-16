@@ -44,7 +44,13 @@ class ResultsView {
    * @param {object|string} data  Parsed JSON or raw text string.
    * @param {number}        ms    Query duration in milliseconds.
    */
-  render(data, ms, prefixes = {}) {
+  /**
+   * @param {object|string} data     Parsed JSON or raw text string.
+   * @param {number}        ms       Query duration in milliseconds.
+   * @param {object}        prefixes PREFIX map extracted from the query.
+   * @param {number}        limit    Max rows to display (0 = no limit).
+   */
+  render(data, ms, prefixes = {}, limit = 1000) {
     this._queryPrefixes = prefixes;   // from PREFIX declarations in the query
     this._lastResults = null;
     this._btnExport.classList.add('hidden');
@@ -62,7 +68,7 @@ class ResultsView {
 
     // SELECT query
     if (data.results && data.results.bindings !== undefined) {
-      this._renderSelect(data, ms);
+      this._renderSelect(data, ms, limit);
       return;
     }
 
@@ -117,19 +123,25 @@ class ResultsView {
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
-  _renderSelect(data, ms) {
-    const vars     = data.head.vars;
-    const bindings = data.results.bindings;
-    const count    = bindings.length;
+  _renderSelect(data, ms, limit = 1000) {
+    const vars        = data.head.vars;
+    const allBindings = data.results.bindings;
+    const totalCount  = allBindings.length;
 
-    this._lastResults = { vars, bindings };
+    // Always store the full result set so CSV export is unaffected by the display limit.
+    this._lastResults = { vars, bindings: allBindings };
 
-    if (count === 0) {
+    if (totalCount === 0) {
       this._tabResults.innerHTML = `
         <div class="results-placeholder">Query returned no results.</div>
-        ${this._footerHTML(count, ms)}`;
+        ${this._footerHTML(0, ms)}`;
       return;
     }
+
+    // Apply display limit (limit = 0 means show everything).
+    const truncated    = limit > 0 && totalCount > limit;
+    const bindings     = truncated ? allBindings.slice(0, limit) : allBindings;
+    const displayCount = bindings.length;
 
     // Build table
     const thead = `<tr>${vars.map(v => `<th>${this._escape(v)}</th>`).join('')}</tr>`;
@@ -147,16 +159,16 @@ class ResultsView {
           <thead>${thead}</thead>
           <tbody>${tbody}</tbody>
         </table>
-        ${this._footerHTML(count, ms)}
+        ${this._footerHTML(totalCount, ms, displayCount, truncated)}
       </div>`;
 
     this._btnExport.classList.remove('hidden');
 
-    // Geometry detection for map tab
+    // Geometry detection uses the full result set so all features appear on the map.
     this._lastGeomInfo = null;
-    const geomCols = this._detectGeomCols(vars, bindings);
+    const geomCols = this._detectGeomCols(vars, allBindings);
     if (geomCols.length > 0) {
-      this._lastGeomInfo = { vars, bindings, geomCols };
+      this._lastGeomInfo = { vars, bindings: allBindings, geomCols };
     }
   }
 
@@ -202,9 +214,15 @@ class ResultsView {
     }
   }
 
-  _footerHTML(count, ms) {
+  _footerHTML(count, ms, displayCount = null, truncated = false) {
     const parts = [];
-    if (count !== null) parts.push(`${count.toLocaleString()} row${count !== 1 ? 's' : ''}`);
+    if (count !== null) {
+      if (truncated && displayCount !== null) {
+        parts.push(`Showing ${displayCount.toLocaleString()} of ${count.toLocaleString()} rows`);
+      } else {
+        parts.push(`${count.toLocaleString()} row${count !== 1 ? 's' : ''}`);
+      }
+    }
     if (ms !== undefined && ms !== null) parts.push(this._formatMs(ms));
     return parts.length
       ? `<div class="results-footer">${parts.map(p => `<span>${p}</span>`).join('')}</div>`

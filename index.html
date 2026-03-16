@@ -129,11 +129,16 @@
       <div id="results-pane">
         <div id="results-toolbar">
           <div id="results-tabs" role="tablist">
-            <button class="results-tab active" role="tab" data-tab="results" aria-selected="true">Results</button>
+            <button class="results-tab active" role="tab" data-tab="results" aria-selected="true">Table</button>
             <button class="results-tab hidden" role="tab" id="tab-btn-map" data-tab="map" aria-selected="false">Map</button>
             <button class="results-tab" role="tab" data-tab="messages" aria-selected="false">Messages</button>
           </div>
           <div class="results-actions">
+            <label class="row-limit-label" for="row-limit">Rows</label>
+            <select id="row-limit" class="row-limit-select" title="Limit displayed rows">
+              <option value="1000">1,000</option>
+              <option value="">No limit</option>
+            </select>
             <button id="btn-export-csv" class="btn btn-muted btn-sm hidden" title="Export results as CSV">Export CSV</button>
           </div>
         </div>
