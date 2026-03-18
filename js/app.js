@@ -28,10 +28,23 @@
     },
   });
 
+  // Tracks the active schema type so toolbar buttons can re-fire without re-querying.
+  const schemaCtx = { sampleQuery: null, mermaidSrc: null, label: null };
+
   const schema = new SchemaManager({
     treeEl:       document.getElementById('schema-tree'),
     onQuery:      runSilentQuery,
-    onSampleType: runSchemaPreview,
+    onSampleType: (sparql, label) => {
+      schemaCtx.sampleQuery = sparql;
+      schemaCtx.label       = label;
+      schemaCtx.mermaidSrc  = null; // reset stale connections for new type
+      runSchemaPreview(sparql, label);
+    },
+    onConnections: (mermaidSrc, label, errMsg) => {
+      schemaCtx.mermaidSrc = mermaidSrc;
+      schemaCtx.label      = label;
+      runSchemaConnections(mermaidSrc, label, errMsg);
+    },
   });
 
   // ── Restore last endpoint URL ──────────────────────────────────────────────
@@ -137,7 +150,8 @@
       const { data, contentType, raw } = await endpoint.query(sparql);
       const ms = Math.round(performance.now() - t0);
       results.render(data, ms, {}, 0, contentType, raw);
-      results.setToolbarMode('none');   // schema previews: hide both Rows and Format
+      results.setToolbarMode('none');
+      setSchemaToolbar('properties');
       setResultsTab('results');
       logMessage(`Schema preview completed in ${ms} ms`, 'success');
     } catch (err) {
@@ -146,6 +160,41 @@
       setResultsTab('messages');
       logMessage(`Schema preview error: ${err.message}`, 'error');
     }
+  }
+
+  /**
+   * Render a cached Mermaid connections diagram in the results pane.
+   */
+  async function runSchemaConnections(mermaidSrc, label, errMsg) {
+    results.clear();
+    hideSchemaToolbar();
+    document.getElementById('tab-btn-map').classList.add('hidden');
+    setResultsTab('results');
+    logMessage(`Connections: ${label}`, 'info');
+
+    const t0 = performance.now();
+    if (errMsg) {
+      results.renderError(errMsg);
+      logMessage(`Connections error: ${errMsg}`, 'error');
+      return;
+    }
+    await results.renderMermaid(mermaidSrc, Math.round(performance.now() - t0));
+    setSchemaToolbar('connections');
+    logMessage(`Connections graph rendered for ${label}`, 'success');
+  }
+
+  function setSchemaToolbar(active) {
+    document.getElementById('btn-schema-properties').classList.remove('hidden');
+    document.getElementById('btn-schema-connections').classList.remove('hidden');
+    document.getElementById('btn-schema-properties')
+      .classList.toggle('btn-schema-active', active === 'properties');
+    document.getElementById('btn-schema-connections')
+      .classList.toggle('btn-schema-active', active === 'connections');
+  }
+
+  function hideSchemaToolbar() {
+    document.getElementById('btn-schema-properties').classList.add('hidden');
+    document.getElementById('btn-schema-connections').classList.add('hidden');
   }
 
   // ── Query execution ────────────────────────────────────────────────────────
@@ -174,6 +223,7 @@
     editor.setRunning(true);
     editor.setStatus('Running…', 'running');
     results.clear();
+    hideSchemaToolbar();
     document.getElementById('tab-btn-map').classList.add('hidden');
     logMessage(`Running query on ${endpoint.getUrl()}`, 'info');
 
@@ -239,6 +289,14 @@
   }
 
   // ── Row-limit selector ─────────────────────────────────────────────────────
+
+  document.getElementById('btn-schema-properties').addEventListener('click', () => {
+    if (schemaCtx.sampleQuery) runSchemaPreview(schemaCtx.sampleQuery, schemaCtx.label);
+  });
+
+  document.getElementById('btn-schema-connections').addEventListener('click', () => {
+    if (schemaCtx.mermaidSrc) runSchemaConnections(schemaCtx.mermaidSrc, schemaCtx.label);
+  });
 
   document.getElementById('row-limit').addEventListener('change', function () {
     const limit = this.value === '' ? 0 : parseInt(this.value, 10);

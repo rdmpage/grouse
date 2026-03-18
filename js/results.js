@@ -123,6 +123,36 @@ class ResultsView {
     if (responsePre) responsePre.textContent = '';
   }
 
+  /** Render a Mermaid diagram (connections graph) into the results pane. */
+  async renderMermaid(src, ms) {
+    this._lastResults = null;
+    this._lastQuads   = null;
+    this._lastRaw     = '';
+    this._btnExport.classList.add('hidden');
+    this._tabResults.classList.remove('graph-active');
+    this._setTableTabLabel('Connections');
+    this._tabResults.innerHTML =
+      `<div id="mermaid-wrap" class="mermaid-wrap"></div>${this._footerHTML(null, ms)}`;
+
+    const wrap = document.getElementById('mermaid-wrap');
+
+    if (!src) {
+      wrap.innerHTML = '<div class="results-placeholder">No connections data.</div>';
+      return;
+    }
+    if (!window.mermaid) {
+      wrap.innerHTML = '<div class="results-placeholder">Mermaid not loaded.</div>';
+      return;
+    }
+    try {
+      const { svg } = await mermaid.render('mermaid-svg-' + Date.now(), src);
+      wrap.innerHTML = svg;
+    } catch (e) {
+      wrap.innerHTML =
+        `<div class="results-placeholder">Diagram error: ${this._escape(e.message)}</div>`;
+    }
+  }
+
   rerenderRdf(format) {
     if (!this._lastQuads) return;
     this._displayRdf(this._lastQuads, this._lastMs ?? 0, format);
@@ -420,11 +450,38 @@ class ResultsView {
       this._tabResults.innerHTML = '<div class="results-placeholder">Vis.js not loaded — graph view unavailable.</div>';
       return;
     }
-    // Strip rdf:type triples (clutter) and deduplicate before building the graph.
+    // Pre-scan for human-readable labels before filtering.
+    // Picks up name/label literals and givenName+familyName pairs.
+    const PRED_NAME   = /[/#](name|label)$/i;
+    const PRED_GIVEN  = /[/#](givenName|firstName)$/i;
+    const PRED_FAMILY = /[/#](familyName|lastName|surname)$/i;
+    const labelMap = new Map();  // subject URI → string label
+    for (const q of quads) {
+      if (q.object.termType !== 'Literal') continue;
+      const sid = q.subject.value;
+      const val = q.object.value;
+      const pred = q.predicate.value;
+      if (PRED_NAME.test(pred)) {
+        labelMap.set(sid, val);
+      } else if (!labelMap.has(sid) || typeof labelMap.get(sid) !== 'string') {
+        const cur = (typeof labelMap.get(sid) === 'object') ? labelMap.get(sid) : {};
+        if (PRED_GIVEN.test(pred))  labelMap.set(sid, { ...cur, given: val });
+        else if (PRED_FAMILY.test(pred)) labelMap.set(sid, { ...cur, family: val });
+      }
+    }
+    for (const [sid, val] of labelMap) {
+      if (typeof val === 'object') {
+        const parts = [val.given, val.family].filter(Boolean);
+        labelMap.set(sid, parts.length ? parts.join(' ') : null);
+      }
+    }
+
+    // Strip rdf:type triples (clutter), literal-object triples, and duplicates.
     const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
     const seen     = new Set();
     quads = quads.filter(q => {
-      if (q.predicate.value === RDF_TYPE) return false;
+      if (q.predicate.value === RDF_TYPE)     return false;
+      if (q.object.termType === 'Literal')    return false;
       const key = q.subject.value + '||' + q.predicate.value + '||' + q.object.value;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -453,9 +510,16 @@ class ResultsView {
     const nodeReg  = new Map();  // URI/BNode value → true (dedup)
     const predReg  = new Map();  // `subjVal||predVal` → predicate-node id
 
+    const _nodeLabel = (term) =>
+      labelMap.get(term.value) || this._n3TermLabel(term);
+    const _nodeGroup = (term, isMain = false) => {
+      if (isMain) return 'primary_uri';
+      return term.termType === 'BlankNode' ? 'bnode' : 'uri';
+    };
+
     // Main subject node
     const mainTerm = quads.find(q => q.subject.value === mainSubjVal).subject;
-    nodeData.push({ id: mainSubjVal, label: this._n3TermLabel(mainTerm), group: 'primary_uri' });
+    nodeData.push({ id: mainSubjVal, label: _nodeLabel(mainTerm), group: _nodeGroup(mainTerm, true) });
     nodeReg.set(mainSubjVal, true);
 
     for (const quad of quads) {
@@ -464,7 +528,7 @@ class ResultsView {
       // Additional subject nodes for multi-subject graphs
       if (!nodeReg.has(sId)) {
         nodeReg.set(sId, true);
-        nodeData.push({ id: sId, label: this._n3TermLabel(quad.subject), group: 'uri' });
+        nodeData.push({ id: sId, label: _nodeLabel(quad.subject), group: _nodeGroup(quad.subject) });
       }
 
       // One predicate-node (box) per unique (subject, predicate) pair
@@ -477,17 +541,11 @@ class ResultsView {
       }
       const pId = predReg.get(spKey);
 
-      // Object — literals unique per occurrence; URIs/BNodes shared
-      let oId;
-      if (quad.object.termType === 'Literal') {
-        oId = `LIT:${edgeData.length}`;
-        nodeData.push({ id: oId, label: this._n3TermLabel(quad.object), group: 'literal' });
-      } else {
-        oId = quad.object.value;
-        if (!nodeReg.has(oId)) {
-          nodeReg.set(oId, true);
-          nodeData.push({ id: oId, label: this._n3TermLabel(quad.object), group: 'uri' });
-        }
+      // Object — only URI/BNode nodes at this point (literals filtered out above)
+      const oId = quad.object.value;
+      if (!nodeReg.has(oId)) {
+        nodeReg.set(oId, true);
+        nodeData.push({ id: oId, label: _nodeLabel(quad.object), group: _nodeGroup(quad.object) });
       }
       edgeData.push({ from: pId, to: oId });
     }
@@ -545,11 +603,11 @@ class ResultsView {
                      hover:     { border: '#1a4d7a', background: '#3d7eb5' } },
             font: { size: 13, color: '#fff' },
           },
-          literal: {
-            color: { border: '#90caf9', background: '#e3f2fd',
-                     highlight: { border: '#64b5f6', background: '#bbdefb' },
-                     hover:     { border: '#64b5f6', background: '#bbdefb' } },
-            font: { size: 12, color: '#1a237e' },
+          bnode: {
+            color: { border: '#f57c00', background: '#ffe0b2',
+                     highlight: { border: '#e65100', background: '#ffcc80' },
+                     hover:     { border: '#e65100', background: '#ffcc80' } },
+            font: { size: 13, color: '#bf360c' },
           },
         },
       }

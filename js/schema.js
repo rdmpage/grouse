@@ -36,6 +36,38 @@ SELECT ?p (COUNT(?p) AS ?count) WHERE {
 GROUP BY ?p
 ORDER BY DESC(?count)`;
 
+// $URI is replaced with the actual type URI before execution
+const SCHEMA_CONNECTIONS_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?direction ?predicate ?nThings ?example (SAMPLE(?t) AS ?exampleType)
+WHERE {
+  {
+    SELECT ("incoming" AS ?direction) ?predicate
+           (COUNT(DISTINCT ?thing) AS ?nThings) (SAMPLE(?thing) AS ?example)
+    WHERE {
+      ?centre a <$URI> .
+      ?thing ?predicate ?centre .
+      FILTER(isIRI(?thing))
+      FILTER(?predicate != rdf:type)
+    }
+    GROUP BY ?predicate
+  }
+  UNION
+  {
+    SELECT ("outgoing" AS ?direction) ?predicate
+           (COUNT(DISTINCT ?thing) AS ?nThings) (SAMPLE(?thing) AS ?example)
+    WHERE {
+      ?centre a <$URI> .
+      ?centre ?predicate ?thing .
+      FILTER(isIRI(?thing))
+      FILTER(?predicate != rdf:type)
+    }
+    GROUP BY ?predicate
+  }
+  OPTIONAL { ?example a ?t }
+}
+GROUP BY ?direction ?predicate ?nThings ?example
+ORDER BY ?direction DESC(?nThings)`;
+
 // Fallback used when a type has no discoverable literal properties
 const SCHEMA_SAMPLE_QUERY_FALLBACK = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?resourceURI ?p ?o WHERE {
@@ -52,13 +84,16 @@ class SchemaManager {
    * @param {HTMLElement}        opts.treeEl        — #schema-tree container
    * @param {Function}           opts.onQuery        — async (sparql) => data  (silent)
    * @param {Function}           opts.onSampleType   — (sparql, typeLabel) => void
-   *                                                    renders to results pane
+   *                                                    renders sample table to results pane
+   * @param {Function}           opts.onConnections  — (mermaidSrc, typeLabel) => void
+   *                                                    renders connections graph to results pane
    */
-  constructor({ treeEl, onQuery, onSampleType }) {
-    this._treeEl       = treeEl;
-    this._onQuery      = onQuery;
-    this._onSampleType = onSampleType;
-    this._types        = [];
+  constructor({ treeEl, onQuery, onSampleType, onConnections }) {
+    this._treeEl        = treeEl;
+    this._onQuery       = onQuery;
+    this._onSampleType  = onSampleType;
+    this._onConnections = onConnections || (() => {});
+    this._types         = [];
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -108,6 +143,7 @@ class SchemaManager {
     <span class="schema-type-chevron">&gt;</span>
     <span class="schema-type-label">${display}</span>
     <span class="schema-type-count">${count}</span>
+    <button class="schema-connections-btn" title="Show connections graph">⇌</button>
   </summary>
   <div class="schema-type-body"></div>
 </details>`;
@@ -115,13 +151,17 @@ class SchemaManager {
 
     this._treeEl.querySelectorAll('details.schema-type').forEach(el => {
       el.addEventListener('toggle', () => {
-        // Update chevron
         const chevron = el.querySelector('.schema-type-chevron');
         if (chevron) chevron.textContent = el.open ? '⌄' : '>';
-
         if (!el.open) return;
-        const idx  = parseInt(el.dataset.index, 10);
+        const idx = parseInt(el.dataset.index, 10);
         this._openType(el, this._types[idx]);
+      });
+
+      el.querySelector('.schema-connections-btn').addEventListener('click', e => {
+        e.stopPropagation(); // don't toggle the <details>
+        const idx = parseInt(el.dataset.index, 10);
+        this._clickConnections(el, this._types[idx]);
       });
     });
   }
@@ -185,6 +225,67 @@ SELECT ?resourceURI ${selectVars} WHERE {
   { SELECT ?resourceURI WHERE { ?resourceURI rdf:type <${typeUri}> } LIMIT 10 }
 ${optionals}
 }`;
+  }
+
+  async _clickConnections(el, type) {
+    const label = type.label || this._localName(type.uri);
+    const body  = el.querySelector('.schema-type-body');
+
+    // Use cached Mermaid source if available
+    if (body._mermaidSrc) {
+      this._onConnections(body._mermaidSrc, label);
+      return;
+    }
+
+    try {
+      const q        = SCHEMA_CONNECTIONS_QUERY.replace(/\$URI/g, type.uri);
+      const data     = await this._onQuery(q);
+      const bindings = data?.results?.bindings || [];
+      const src      = this._buildMermaidDiagram(type.uri, label, bindings);
+      body._mermaidSrc = src;
+      this._onConnections(src, label);
+    } catch (err) {
+      this._onConnections(null, label, err.message);
+    }
+  }
+
+  _buildMermaidDiagram(typeUri, typeLabel, bindings) {
+    const centreId = 'centre';
+    const lines    = ['flowchart LR', `  ${centreId}(["${typeLabel}"])`];
+    const nodeMap  = new Map(); // related type URI → node id
+
+    for (const row of bindings) {
+      const direction = row.direction?.value;
+      const predLabel = this._localName(row.predicate?.value || '?');
+      const count     = parseInt(row.nThings?.value || '0', 10).toLocaleString();
+      const relType   = row.exampleType?.value;
+      const relLabel  = relType ? this._localName(relType) : '?';
+      const edgeLabel = `"${predLabel}\\n${count}"`;
+
+      let nodeId;
+      if (relType) {
+        if (!nodeMap.has(relType)) {
+          nodeId = `n${nodeMap.size}`;
+          nodeMap.set(relType, nodeId);
+          lines.push(`  ${nodeId}(["${relLabel}"])`);
+        }
+        nodeId = nodeMap.get(relType);
+      } else {
+        nodeId = `u${lines.length}`;
+        lines.push(`  ${nodeId}(["?"])`);
+      }
+
+      if (direction === 'outgoing') {
+        lines.push(`  ${centreId} -->|${edgeLabel}| ${nodeId}`);
+      } else {
+        lines.push(`  ${nodeId} -->|${edgeLabel}| ${centreId}`);
+      }
+    }
+
+    if (lines.length <= 2) {
+      return 'flowchart LR\n  centre(["No connections found"])';
+    }
+    return lines.join('\n');
   }
 
   /** Render property list into body; returns array of property URIs. */
