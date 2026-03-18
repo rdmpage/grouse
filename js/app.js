@@ -164,18 +164,12 @@
   function _renderSchemaProperties() {
     try {
       const { data, contentType, raw, ms } = schemaCtx.sampleResult;
-      console.log('[schema] _render: data rows=', data?.results?.bindings?.length);
       results.clear();
-      console.log('[schema] _render: after clear');
       document.getElementById('tab-btn-map').classList.add('hidden');
       results.render(data, ms, {}, 0, contentType, raw);
-      console.log('[schema] _render: after render, tabResults innerHTML length=',
-        document.getElementById('tab-results')?.innerHTML?.length);
       results.setToolbarMode('none');
       setSchemaToolbar('properties');
       setResultsTab('results');
-      console.log('[schema] _render: done, tab-results hidden=',
-        document.getElementById('tab-results')?.hidden);
     } catch (err) {
       console.error('[schema] _renderSchemaProperties failed:', err);
       results.renderError(err.message);
@@ -311,9 +305,7 @@
   // ── Row-limit selector ─────────────────────────────────────────────────────
 
   document.getElementById('btn-schema-properties').addEventListener('click', () => {
-    console.log('[schema] Properties clicked — sampleResult:', schemaCtx.sampleResult);
     if (schemaCtx.sampleResult) _renderSchemaProperties();
-    else console.warn('[schema] sampleResult is null — button should not be visible yet');
   });
 
   document.getElementById('btn-schema-connections').addEventListener('click', () => {
