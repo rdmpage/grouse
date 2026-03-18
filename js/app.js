@@ -193,6 +193,7 @@
       return;
     }
     await results.renderMermaid(mermaidSrc, Math.round(performance.now() - t0));
+    results.setToolbarMode('none');
     setSchemaToolbar('connections');
     logMessage(`Connections graph rendered for ${label}`, 'success');
   }

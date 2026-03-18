@@ -132,7 +132,7 @@ class ResultsView {
     this._tabResults.classList.remove('graph-active');
     this._setTableTabLabel('Connections');
     this._tabResults.innerHTML =
-      `<div id="mermaid-wrap" class="mermaid-wrap"></div>${this._footerHTML(null, ms)}`;
+      `<div class="results-table-wrap"><div id="mermaid-wrap" class="mermaid-wrap"></div>${this._footerHTML(null, ms)}</div>`;
 
     const wrap = document.getElementById('mermaid-wrap');
 
