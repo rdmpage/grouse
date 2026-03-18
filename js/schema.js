@@ -36,15 +36,19 @@ SELECT ?p (COUNT(?p) AS ?count) WHERE {
 GROUP BY ?p
 ORDER BY DESC(?count)`;
 
-// $URI is replaced with the actual type URI before execution
+// $URI is replaced with the actual type URI before execution.
+// The inner LIMIT 1000 subquery samples a representative set of instances
+// rather than scanning the full type, making the query much faster on large stores.
 const SCHEMA_CONNECTIONS_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?direction ?predicate ?nThings ?example (SAMPLE(?t) AS ?exampleType)
 WHERE {
   {
-    SELECT ("incoming" AS ?direction) ?predicate
-           (COUNT(DISTINCT ?thing) AS ?nThings) (SAMPLE(?thing) AS ?example)
+    SELECT ("incoming" AS ?direction)
+           ?predicate
+           (COUNT(DISTINCT ?thing) AS ?nThings)
+           (SAMPLE(?thing) AS ?example)
     WHERE {
-      ?centre a <$URI> .
+      { SELECT DISTINCT ?centre WHERE { ?centre a <$URI> } LIMIT 1000 }
       ?thing ?predicate ?centre .
       FILTER(isIRI(?thing))
       FILTER(?predicate != rdf:type)
@@ -53,10 +57,12 @@ WHERE {
   }
   UNION
   {
-    SELECT ("outgoing" AS ?direction) ?predicate
-           (COUNT(DISTINCT ?thing) AS ?nThings) (SAMPLE(?thing) AS ?example)
+    SELECT ("outgoing" AS ?direction)
+           ?predicate
+           (COUNT(DISTINCT ?thing) AS ?nThings)
+           (SAMPLE(?thing) AS ?example)
     WHERE {
-      ?centre a <$URI> .
+      { SELECT DISTINCT ?centre WHERE { ?centre a <$URI> } LIMIT 1000 }
       ?centre ?predicate ?thing .
       FILTER(isIRI(?thing))
       FILTER(?predicate != rdf:type)
