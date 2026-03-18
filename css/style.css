@@ -1283,9 +1283,8 @@ input:focus, textarea:focus {
 
 /* Schema toolbar buttons (Properties / Connections) */
 .btn-schema-active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+  color: var(--text);
 }
 
 /* Mermaid diagram container */

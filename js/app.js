@@ -28,16 +28,16 @@
     },
   });
 
-  // Tracks the active schema type so toolbar buttons can re-fire without re-querying.
-  const schemaCtx = { sampleQuery: null, mermaidSrc: null, label: null };
+  // Caches the last schema result so toolbar buttons re-render without re-querying.
+  const schemaCtx = { sampleResult: null, mermaidSrc: null, label: null };
 
   const schema = new SchemaManager({
     treeEl:       document.getElementById('schema-tree'),
     onQuery:      runSilentQuery,
     onSampleType: (sparql, label) => {
-      schemaCtx.sampleQuery = sparql;
-      schemaCtx.label       = label;
-      schemaCtx.mermaidSrc  = null; // reset stale connections for new type
+      schemaCtx.sampleResult = null; // cleared until the query completes
+      schemaCtx.mermaidSrc   = null;
+      schemaCtx.label        = label;
       runSchemaPreview(sparql, label);
     },
     onConnections: (mermaidSrc, label, errMsg) => {
@@ -149,10 +149,8 @@
     try {
       const { data, contentType, raw } = await endpoint.query(sparql);
       const ms = Math.round(performance.now() - t0);
-      results.render(data, ms, {}, 0, contentType, raw);
-      results.setToolbarMode('none');
-      setSchemaToolbar('properties');
-      setResultsTab('results');
+      schemaCtx.sampleResult = { data, contentType, raw, ms };
+      _renderSchemaProperties();
       logMessage(`Schema preview completed in ${ms} ms`, 'success');
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -160,6 +158,17 @@
       setResultsTab('messages');
       logMessage(`Schema preview error: ${err.message}`, 'error');
     }
+  }
+
+  /** Re-render the cached schema sample result (no network request). */
+  function _renderSchemaProperties() {
+    const { data, contentType, raw, ms } = schemaCtx.sampleResult;
+    results.clear();
+    document.getElementById('tab-btn-map').classList.add('hidden');
+    results.render(data, ms, {}, 0, contentType, raw);
+    results.setToolbarMode('none');
+    setSchemaToolbar('properties');
+    setResultsTab('results');
   }
 
   /**
@@ -291,7 +300,7 @@
   // ── Row-limit selector ─────────────────────────────────────────────────────
 
   document.getElementById('btn-schema-properties').addEventListener('click', () => {
-    if (schemaCtx.sampleQuery) runSchemaPreview(schemaCtx.sampleQuery, schemaCtx.label);
+    if (schemaCtx.sampleResult) _renderSchemaProperties();
   });
 
   document.getElementById('btn-schema-connections').addEventListener('click', () => {
