@@ -164,14 +164,20 @@
   function _renderSchemaProperties() {
     try {
       const { data, contentType, raw, ms } = schemaCtx.sampleResult;
+      console.log('[schema] _render: data rows=', data?.results?.bindings?.length);
       results.clear();
+      console.log('[schema] _render: after clear');
       document.getElementById('tab-btn-map').classList.add('hidden');
       results.render(data, ms, {}, 0, contentType, raw);
+      console.log('[schema] _render: after render, tabResults innerHTML length=',
+        document.getElementById('tab-results')?.innerHTML?.length);
       results.setToolbarMode('none');
       setSchemaToolbar('properties');
       setResultsTab('results');
+      console.log('[schema] _render: done, tab-results hidden=',
+        document.getElementById('tab-results')?.hidden);
     } catch (err) {
-      console.error('_renderSchemaProperties failed:', err);
+      console.error('[schema] _renderSchemaProperties failed:', err);
       results.renderError(err.message);
     }
   }
