@@ -262,7 +262,9 @@ ${optionals}
 
   _buildMermaidDiagram(typeUri, typeLabel, bindings) {
     const centreId = 'centre';
-    const lines    = ['flowchart LR', `  ${centreId}(["${typeLabel}"])`];
+    // Centre node as a circle; related nodes as plain rectangles —
+    // both use simple straight/arc paths that render cleanly without jagged edges.
+    const lines    = ['flowchart LR', `  ${centreId}(("${this._mermaidEsc(typeLabel)}"))`];
     const nodeMap  = new Map(); // related type URI → node id
 
     for (const row of bindings) {
@@ -270,20 +272,20 @@ ${optionals}
       const predLabel = this._localName(row.predicate?.value || '?');
       const count     = parseInt(row.nThings?.value || '0', 10).toLocaleString();
       const relType   = row.exampleType?.value;
-      const relLabel  = relType ? this._localName(relType) : '?';
-      const edgeLabel = `"${predLabel}\\n${count}"`;
+      const relLabel  = this._mermaidEsc(relType ? this._localName(relType) : '?');
+      const edgeLabel = `"${this._mermaidEsc(predLabel)}\\n${count}"`;
 
       let nodeId;
       if (relType) {
         if (!nodeMap.has(relType)) {
           nodeId = `n${nodeMap.size}`;
           nodeMap.set(relType, nodeId);
-          lines.push(`  ${nodeId}(["${relLabel}"])`);
+          lines.push(`  ${nodeId}["${relLabel}"]`);
         }
         nodeId = nodeMap.get(relType);
       } else {
         nodeId = `u${lines.length}`;
-        lines.push(`  ${nodeId}(["?"])`);
+        lines.push(`  ${nodeId}["?"]`);
       }
 
       if (direction === 'outgoing') {
@@ -336,5 +338,12 @@ ${optionals}
     return String(str)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Escape characters that break Mermaid node/edge label syntax.
+  _mermaidEsc(str) {
+    return String(str)
+      .replace(/"/g, "'")   // double quotes break node label delimiters
+      .replace(/[()[\]{}]/g, ''); // brackets confuse shape parsing
   }
 }
