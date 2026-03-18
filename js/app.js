@@ -204,7 +204,9 @@
 
   function setSchemaToolbar(active) {
     document.getElementById('btn-schema-properties').classList.remove('hidden');
-    document.getElementById('btn-schema-connections').classList.remove('hidden');
+    // Connections button only shown once a diagram has been loaded for this type
+    document.getElementById('btn-schema-connections')
+      .classList.toggle('hidden', !schemaCtx.mermaidSrc);
     document.getElementById('btn-schema-properties')
       .classList.toggle('btn-schema-active', active === 'properties');
     document.getElementById('btn-schema-connections')
