@@ -162,13 +162,18 @@
 
   /** Re-render the cached schema sample result (no network request). */
   function _renderSchemaProperties() {
-    const { data, contentType, raw, ms } = schemaCtx.sampleResult;
-    results.clear();
-    document.getElementById('tab-btn-map').classList.add('hidden');
-    results.render(data, ms, {}, 0, contentType, raw);
-    results.setToolbarMode('none');
-    setSchemaToolbar('properties');
-    setResultsTab('results');
+    try {
+      const { data, contentType, raw, ms } = schemaCtx.sampleResult;
+      results.clear();
+      document.getElementById('tab-btn-map').classList.add('hidden');
+      results.render(data, ms, {}, 0, contentType, raw);
+      results.setToolbarMode('none');
+      setSchemaToolbar('properties');
+      setResultsTab('results');
+    } catch (err) {
+      console.error('_renderSchemaProperties failed:', err);
+      results.renderError(err.message);
+    }
   }
 
   /**
@@ -300,7 +305,9 @@
   // ── Row-limit selector ─────────────────────────────────────────────────────
 
   document.getElementById('btn-schema-properties').addEventListener('click', () => {
+    console.log('[schema] Properties clicked — sampleResult:', schemaCtx.sampleResult);
     if (schemaCtx.sampleResult) _renderSchemaProperties();
+    else console.warn('[schema] sampleResult is null — button should not be visible yet');
   });
 
   document.getElementById('btn-schema-connections').addEventListener('click', () => {
