@@ -40,10 +40,19 @@
       schemaCtx.label        = label;
       runSchemaPreview(sparql, label);
     },
-    onConnections: (mermaidSrc, label, errMsg) => {
+    onConnectionsStart: (label) => {
+      results.clear();
+      document.getElementById('tab-results').innerHTML =
+        `<div class="results-placeholder">Loading connections for <em>${label}</em>…</div>`;
+      hideSchemaToolbar();
+      document.getElementById('tab-btn-map').classList.add('hidden');
+      setResultsTab('results');
+      logMessage(`Loading connections: ${label}`, 'info');
+    },
+    onConnections: (mermaidSrc, label, errMsg, elapsedMs) => {
       schemaCtx.mermaidSrc = mermaidSrc;
       schemaCtx.label      = label;
-      runSchemaConnections(mermaidSrc, label, errMsg);
+      runSchemaConnections(mermaidSrc, label, errMsg, elapsedMs);
     },
   });
 
@@ -179,23 +188,18 @@
   /**
    * Render a cached Mermaid connections diagram in the results pane.
    */
-  async function runSchemaConnections(mermaidSrc, label, errMsg) {
-    results.clear();
-    hideSchemaToolbar();
-    document.getElementById('tab-btn-map').classList.add('hidden');
-    setResultsTab('results');
-    logMessage(`Connections: ${label}`, 'info');
-
-    const t0 = performance.now();
+  // pane already cleared and loading message shown by onConnectionsStart
+  async function runSchemaConnections(mermaidSrc, label, errMsg, elapsedMs = 0) {
     if (errMsg) {
       results.renderError(errMsg);
+      results.setToolbarMode('none');
       logMessage(`Connections error: ${errMsg}`, 'error');
       return;
     }
-    await results.renderMermaid(mermaidSrc, Math.round(performance.now() - t0));
+    await results.renderMermaid(mermaidSrc, elapsedMs);
     results.setToolbarMode('none');
     setSchemaToolbar('connections');
-    logMessage(`Connections graph rendered for ${label}`, 'success');
+    logMessage(`Connections for ${label} — ${elapsedMs} ms`, 'success');
   }
 
   function setSchemaToolbar(active) {

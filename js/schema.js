@@ -88,12 +88,13 @@ class SchemaManager {
    * @param {Function}           opts.onConnections  — (mermaidSrc, typeLabel) => void
    *                                                    renders connections graph to results pane
    */
-  constructor({ treeEl, onQuery, onSampleType, onConnections }) {
-    this._treeEl        = treeEl;
-    this._onQuery       = onQuery;
-    this._onSampleType  = onSampleType;
-    this._onConnections = onConnections || (() => {});
-    this._types         = [];
+  constructor({ treeEl, onQuery, onSampleType, onConnectionsStart, onConnections }) {
+    this._treeEl               = treeEl;
+    this._onQuery              = onQuery;
+    this._onSampleType         = onSampleType;
+    this._onConnectionsStart   = onConnectionsStart || (() => {});
+    this._onConnections        = onConnections || (() => {});
+    this._types                = [];
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -230,10 +231,14 @@ ${optionals}
   async _clickConnections(el, type) {
     const label = type.label || this._localName(type.uri);
     const body  = el.querySelector('.schema-type-body');
+    const t0    = performance.now();
+
+    // Immediate feedback: clear pane and show loading state
+    this._onConnectionsStart(label);
 
     // Use cached Mermaid source if available
     if (body._mermaidSrc) {
-      this._onConnections(body._mermaidSrc, label);
+      this._onConnections(body._mermaidSrc, label, null, Math.round(performance.now() - t0));
       return;
     }
 
@@ -243,9 +248,9 @@ ${optionals}
       const bindings = data?.results?.bindings || [];
       const src      = this._buildMermaidDiagram(type.uri, label, bindings);
       body._mermaidSrc = src;
-      this._onConnections(src, label);
+      this._onConnections(src, label, null, Math.round(performance.now() - t0));
     } catch (err) {
-      this._onConnections(null, label, err.message);
+      this._onConnections(null, label, err.message, Math.round(performance.now() - t0));
     }
   }
 
