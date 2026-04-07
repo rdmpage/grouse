@@ -836,9 +836,23 @@ class ResultsView {
       }
     }
 
-    // Pattern B: named variable — e.g. ?thumbnailUrl, ?image, ?depiction
-    const NAME_RE = /^(thumbnail(url)?|image|img|depiction|photo|picture)$/i;
-    const imgVar  = vars.find(v => NAME_RE.test(v));
+    // Pattern B: named variable — checked in priority order so more specific
+    // names (thumbnail, thumbnailUrl) win over generic ones (image) which are
+    // often subject/entity variables rather than actual image URLs.
+    const PRIORITY = [
+      /^thumbnailUrl$/i,
+      /^thumbnail$/i,
+      /^img$/i,
+      /^depiction$/i,
+      /^photo$/i,
+      /^picture$/i,
+      /^image$/i,
+    ];
+    let imgVar = null;
+    for (const re of PRIORITY) {
+      imgVar = vars.find(v => re.test(v));
+      if (imgVar) break;
+    }
     if (imgVar) {
       const labelVar = vars.find(v => /^(name|label|title)$/i.test(v));
       const images   = bindings
