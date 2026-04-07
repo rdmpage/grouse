@@ -73,6 +73,29 @@ WHERE {
 }
 ```
 
+## LSID Resolution
+
+[LSIDs](https://www.tdwg.org/standards/lsid/) (Life Science Identifiers) take the form `urn:lsid:<authority>:<namespace>:<object>` and are widely used in biodiversity data. Bare `urn:` URIs are not resolvable by browsers, so Grouse translates them to HTTP links at display time.
+
+Three modes are available in `js/results.js`:
+
+| Mode | Behaviour |
+|------|-----------|
+| `'none'` | Display the raw LSID — clicking will fail in most browsers |
+| `'proxy'` | Route through `LSID_PROXY_URL` (default: `https://lsid.io/`) which resolves the LSID server-side and redirects to the resource |
+| `'native'` | Reserved for a future built-in resolver; currently falls back to proxy behaviour |
+
+To change the proxy or mode, edit the two constants near the top of `js/results.js`:
+
+```js
+const LSID_RESOLUTION = 'proxy';          // 'none' | 'proxy' | 'native'
+const LSID_PROXY_URL  = 'https://lsid.io/';
+```
+
+The tooltip on each LSID link always shows the original `urn:lsid:…` identifier regardless of mode.
+
+---
+
 ## CORS
 
 Browser security requires the SPARQL endpoint to send CORS headers (`Access-Control-Allow-Origin: *`). Public endpoints like Wikidata and DBpedia support this. For local/private endpoints:

@@ -12,6 +12,22 @@
 // Beyond this the vis-network layout becomes extremely slow and can crash the tab.
 const MAX_GRAPH_TRIPLES = 1000;
 
+// ── LSID resolution ───────────────────────────────────────────────────────────
+//
+// LSIDs (urn:lsid:…) are not browser-resolvable as bare URNs.
+// Three modes are available:
+//
+//   'none'   — display the raw LSID as a non-functional link (browser will
+//              complain when clicked)
+//   'proxy'  — route through an HTTP proxy that resolves the LSID on the
+//              server side and returns a redirect (default)
+//   'native' — reserved for a future client-side resolver; currently falls
+//              back to 'proxy' behaviour
+//
+// To change the proxy URL, update LSID_PROXY_URL below.
+const LSID_RESOLUTION = 'proxy';
+const LSID_PROXY_URL  = 'https://lsid.io/';
+
 // Well-known prefix map: namespace URI → display prefix.
 // Defined once at module level so it isn't rebuilt on every _shortenUri call.
 const BUILTIN_PREFIXES = {
@@ -283,8 +299,8 @@ class ResultsView {
     switch (term.type) {
       case 'uri': {
         const uri  = term.value;
-        const href = uri.startsWith('urn:lsid:')
-          ? `https://lsid.io/${uri}`
+        const href = uri.startsWith('urn:lsid:') && LSID_RESOLUTION !== 'none'
+          ? `${LSID_PROXY_URL}${uri}`
           : uri;
         return `<a class="val-uri" href="${this._escape(href)}" target="_blank" rel="noopener" title="${this._escape(uri)}">${this._escape(this._shortenUri(uri))}</a>`;
       }
