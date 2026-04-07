@@ -281,8 +281,13 @@ class ResultsView {
 
   _renderTerm(term) {
     switch (term.type) {
-      case 'uri':
-        return `<a class="val-uri" href="${this._escape(term.value)}" target="_blank" rel="noopener" title="${this._escape(term.value)}">${this._escape(this._shortenUri(term.value))}</a>`;
+      case 'uri': {
+        const uri  = term.value;
+        const href = uri.startsWith('urn:lsid:')
+          ? `https://lsid.io/${uri}`
+          : uri;
+        return `<a class="val-uri" href="${this._escape(href)}" target="_blank" rel="noopener" title="${this._escape(uri)}">${this._escape(this._shortenUri(uri))}</a>`;
+      }
 
       case 'literal': {
         const escaped = this._escape(term.value);
