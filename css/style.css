@@ -961,6 +961,54 @@ input:focus, textarea:focus {
   min-height: 200px;
 }
 
+/* ── Images tab ──────────────────────────────────────────────────────────── */
+
+.images-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  align-content: flex-start;
+}
+
+.thumb-item {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.thumb-item a {
+  display: block;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: border-color 0.15s;
+}
+
+.thumb-item a:hover {
+  border-color: var(--accent);
+}
+
+.thumb-item img {
+  display: block;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+}
+
+.thumb-item figcaption {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 120px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Keep Leaflet chrome above our layout layers */
 .leaflet-pane         { z-index: 1 !important; }
 .leaflet-tile-pane    { z-index: 2 !important; }

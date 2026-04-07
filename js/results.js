@@ -54,6 +54,7 @@ class ResultsView {
     this._lastMs        = null;   // query duration, kept for rerender
     this._queryPrefixes = {};     // populated from PREFIX declarations at render time
     this._lastGeomInfo  = null;   // { vars, bindings, geomCols } when WKT found
+    this._lastImageInfo = null;   // { images: [{url, label}] } when thumbnails found
     this._lastQuads     = null;   // parsed N3 quads for RDF results
     this._lastRaw       = '';     // raw server response text, for the Response tab
 
@@ -194,6 +195,10 @@ class ResultsView {
     return this._lastGeomInfo;
   }
 
+  getImageInfo() {
+    return this._lastImageInfo;
+  }
+
   getLastRaw() {
     return this._lastRaw;
   }
@@ -276,6 +281,9 @@ class ResultsView {
     if (geomCols.length > 0) {
       this._lastGeomInfo = { vars, bindings: allBindings, geomCols };
     }
+
+    // Image detection — find thumbnail URLs for the Images tab.
+    this._lastImageInfo = this._detectImages(vars, allBindings);
   }
 
   _renderAsk(boolean, ms) {
@@ -781,6 +789,65 @@ class ResultsView {
       }
       return false;
     });
+  }
+
+  // ── Image detection ───────────────────────────────────────────────────────
+
+  _detectImages(vars, bindings) {
+    const THUMB_PROPS = new Set([
+      'https://schema.org/thumbnailUrl',
+      'http://schema.org/thumbnailUrl',
+      'https://schema.org/image',
+      'http://schema.org/image',
+      'http://xmlns.com/foaf/0.1/depiction',
+      'http://xmlns.com/foaf/0.1/thumbnail',
+    ]);
+
+    const LABEL_PROPS = new Set([
+      'https://schema.org/name',
+      'http://schema.org/name',
+      'http://www.w3.org/2000/01/rdf-schema#label',
+      'http://www.w3.org/2004/02/skos/core#prefLabel',
+    ]);
+
+    // Pattern A: ?p ?o triple pattern — look for a predicate column whose
+    // values are thumbnail property URIs, then collect the paired object values.
+    for (const pVar of vars) {
+      for (const oVar of vars) {
+        if (pVar === oVar) continue;
+        const thumbRows = bindings.filter(b =>
+          b[pVar]?.type === 'uri' && THUMB_PROPS.has(b[pVar].value) &&
+          b[oVar]?.type === 'uri'
+        );
+        if (thumbRows.length === 0) continue;
+
+        // Try to find a label column in the same result set
+        let labelVar = null;
+        for (const lVar of vars) {
+          if (lVar === pVar || lVar === oVar) continue;
+          if (bindings.some(b => b[lVar]?.type === 'literal')) { labelVar = lVar; break; }
+        }
+
+        const images = thumbRows.map(b => ({
+          url:   b[oVar].value,
+          label: labelVar ? (b[labelVar]?.value || '') : '',
+        }));
+        return { images };
+      }
+    }
+
+    // Pattern B: named variable — e.g. ?thumbnailUrl, ?image, ?depiction
+    const NAME_RE = /^(thumbnail(url)?|image|img|depiction|photo|picture)$/i;
+    const imgVar  = vars.find(v => NAME_RE.test(v));
+    if (imgVar) {
+      const labelVar = vars.find(v => /^(name|label|title)$/i.test(v));
+      const images   = bindings
+        .filter(b => b[imgVar]?.type === 'uri')
+        .map(b => ({ url: b[imgVar].value, label: labelVar ? (b[labelVar]?.value || '') : '' }));
+      if (images.length > 0) return { images };
+    }
+
+    return null;
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────

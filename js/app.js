@@ -46,6 +46,7 @@
         `<div class="results-placeholder">Loading connections for <em>${label}</em>…</div>`;
       hideSchemaToolbar();
       document.getElementById('tab-btn-map').classList.add('hidden');
+    document.getElementById('tab-btn-images').classList.add('hidden');
       setResultsTab('results');
       logMessage(`Loading connections: ${label}`, 'info');
     },
@@ -152,6 +153,7 @@
   async function runSchemaPreview(sparql, typeLabel) {
     results.clear();
     document.getElementById('tab-btn-map').classList.add('hidden');
+    document.getElementById('tab-btn-images').classList.add('hidden');
     logMessage(`Schema preview: ${typeLabel}`, 'info');
 
     const t0 = performance.now();
@@ -175,6 +177,7 @@
       const { data, contentType, raw, ms } = schemaCtx.sampleResult;
       results.clear();
       document.getElementById('tab-btn-map').classList.add('hidden');
+    document.getElementById('tab-btn-images').classList.add('hidden');
       results.render(data, ms, {}, 0, contentType, raw);
       results.setToolbarMode('none');
       setSchemaToolbar('properties');
@@ -246,6 +249,7 @@
     results.clear();
     hideSchemaToolbar();
     document.getElementById('tab-btn-map').classList.add('hidden');
+    document.getElementById('tab-btn-images').classList.add('hidden');
     logMessage(`Running query on ${endpoint.getUrl()}`, 'info');
 
     const t0 = performance.now();
@@ -272,8 +276,17 @@
         mapTab.classList.remove('hidden');
       } else {
         mapTab.classList.add('hidden');
-        // If map tab was active, switch back to results
         if (mapTab.getAttribute('aria-selected') === 'true') setResultsTab('results');
+      }
+
+      // Show/hide images tab based on thumbnail presence
+      const imageInfo   = results.getImageInfo();
+      const imagesTab   = document.getElementById('tab-btn-images');
+      if (imageInfo) {
+        imagesTab.classList.remove('hidden');
+      } else {
+        imagesTab.classList.add('hidden');
+        if (imagesTab.getAttribute('aria-selected') === 'true') setResultsTab('results');
       }
 
       // Switch to results tab
@@ -349,6 +362,19 @@
       const geomInfo = results.getGeomInfo();
       if (geomInfo) mapView.render(geomInfo.vars, geomInfo.bindings, geomInfo.geomCols);
       setTimeout(() => mapView.invalidateSize(), 50);
+    }
+    if (tabName === 'images') {
+      const imageInfo = results.getImageInfo();
+      const grid = document.getElementById('images-grid');
+      if (grid && imageInfo) {
+        grid.innerHTML = imageInfo.images.map(({ url, label }) => `
+          <figure class="thumb-item">
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener">
+              <img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" loading="lazy">
+            </a>
+            ${label ? `<figcaption>${escapeHtml(label)}</figcaption>` : ''}
+          </figure>`).join('');
+      }
     }
   }
 
