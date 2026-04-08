@@ -35,16 +35,17 @@ Then open `http://localhost:8000` in your browser. Any static server works — P
 
 | Endpoint | URL |
 |---|---|
-| Wikidata | `https://query.wikidata.org/sparql` |
-| DBpedia | `https://dbpedia.org/sparql` |
-| UniProt | `https://sparql.uniprot.org/sparql` |
-| OSM Planet | `https://qlever.dev/api/osm-planet` |
+| Wikidata | https://query.wikidata.org/sparql |
+| DBpedia | https://dbpedia.org/sparql |
+| UniProt | https://sparql.uniprot.org/sparql |
+| OSM Planet | https://qlever.dev/api/osm-planet |
+| Persée | https://data.persee.fr/sparql |
 
 ---
 
 ### Example queries
 
-#### Buildings in Stühlinger
+#### Buildings in Stühlinger (OSM Planet)
 
 ```
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
@@ -59,7 +60,7 @@ WHERE {
 }
 ```
 
-#### Mungo National Park
+#### Mungo National Park (OSM Planet)
 
 Finds osm:6321578 https://www.openstreetmap.org/relation/6321578, which is Mungo National Park, which you can see here: https://www.openstreetmap.org/relation/6321578#map=10/-33.5309/143.0487&layers=C
 

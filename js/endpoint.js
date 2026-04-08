@@ -37,7 +37,11 @@ class EndpointManager {
     this._emit('statusChange', 'connecting');
 
     try {
-      await this._fetch('ASK { ?s ?p ?o }', 'application/sparql-results+json');
+      // Use a no-data ping query rather than ASK { ?s ?p ?o } — the latter
+      // forces the triplestore to estimate a full-graph scan cost and will
+      // time out (or be rejected) on large endpoints such as Virtuoso instances
+      // with tight execution-time limits.
+      await this._fetch('SELECT (1 AS ?ping) WHERE {}', 'application/sparql-results+json');
       this.connected = true;
       Storage.set('endpoint_url', this.url);
       this._emit('statusChange', 'connected');
