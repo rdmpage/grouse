@@ -79,7 +79,6 @@ class ResultsView {
     this._lastResults   = null;
     this._lastRaw       = raw;
     this._btnExport.classList.add('hidden');
-
     // Populate the Response tab with the raw server text.
     const responsePre = document.getElementById('response-pre');
     if (responsePre) responsePre.textContent = raw || '(no response body)';
@@ -125,8 +124,9 @@ class ResultsView {
     this._lastResults  = null;
     this._lastMs       = null;
     this._lastGeomInfo = null;
-    this._lastQuads    = null;
-    this._lastRaw      = '';
+    this._lastQuads     = null;
+    this._lastRaw       = '';
+    this._lastImageInfo = null;
     this._btnExport.classList.add('hidden');
     this._showRdfControls(false);
     this._setTableTabLabel('Table');
@@ -405,7 +405,8 @@ class ResultsView {
       return;
     }
 
-    this._lastQuads = quads;
+    this._lastQuads     = quads;
+    this._lastImageInfo = this._detectImagesFromQuads(quads);
     this._showRdfControls(true);
 
     const fmtEl = document.getElementById('rdf-format');
@@ -793,22 +794,91 @@ class ResultsView {
 
   // ── Image detection ───────────────────────────────────────────────────────
 
-  _detectImages(vars, bindings) {
-    const THUMB_PROPS = new Set([
+  _thumbProps() {
+    return new Set([
       'https://schema.org/thumbnailUrl',
       'http://schema.org/thumbnailUrl',
       'https://schema.org/image',
       'http://schema.org/image',
       'http://xmlns.com/foaf/0.1/depiction',
       'http://xmlns.com/foaf/0.1/thumbnail',
+      'http://xmlns.com/foaf/0.1/img',
     ]);
+  }
+
+  /** Detect thumbnail images from CONSTRUCT/DESCRIBE N3 quads. */
+  _detectImagesFromQuads(quads) {
+    const THUMB_PROPS = this._thumbProps();
+    const LABEL_PROPS = new Set([
+      'https://schema.org/name',
+      'http://schema.org/name',
+      'http://www.w3.org/2000/01/rdf-schema#label',
+      'http://www.w3.org/2004/02/skos/core#prefLabel',
+      'http://purl.org/dc/terms/title',
+      'http://purl.org/dc/elements/1.1/title',
+    ]);
+
+    const isImageObj = q =>
+      q.object.termType === 'NamedNode' ||
+      (q.object.termType === 'Literal' && /^https?:\/\//.test(q.object.value));
+
+    const thumbQuads = quads.filter(q =>
+      q.predicate.termType === 'NamedNode' && THUMB_PROPS.has(q.predicate.value) &&
+      isImageObj(q)
+    );
+    if (thumbQuads.length === 0) return null;
+
+    // Build subject → label map from any label-like predicate in the graph.
+    const labelMap = new Map();
+    for (const q of quads) {
+      if (q.predicate.termType === 'NamedNode' && LABEL_PROPS.has(q.predicate.value) &&
+          q.object.termType === 'Literal' && !labelMap.has(q.subject.value)) {
+        labelMap.set(q.subject.value, q.object.value);
+      }
+    }
+
+    const images = thumbQuads.map(q => ({
+      url:   q.object.value,
+      label: labelMap.get(q.subject.value) || '',
+    }));
+    return { images };
+  }
+
+  _detectImages(vars, bindings) {
+    const THUMB_PROPS = this._thumbProps();
 
     const LABEL_PROPS = new Set([
       'https://schema.org/name',
       'http://schema.org/name',
       'http://www.w3.org/2000/01/rdf-schema#label',
       'http://www.w3.org/2004/02/skos/core#prefLabel',
+      'http://purl.org/dc/terms/title',
+      'http://purl.org/dc/elements/1.1/title',
     ]);
+
+    // Pattern SPO: CONSTRUCT/DESCRIBE returned as SPARQL JSON with s/p/o columns.
+    // Must be checked before Pattern A because Pattern A's pair loop would pick
+    // (pVar='p', oVar='s') before (pVar='p', oVar='o'), using subjects as image URLs.
+    if (vars.includes('s') && vars.includes('p') && vars.includes('o')) {
+      const thumbRows = bindings.filter(b =>
+        b['p']?.type === 'uri' && THUMB_PROPS.has(b['p'].value) &&
+        b['o']?.type === 'uri'
+      );
+      if (thumbRows.length > 0) {
+        const labelMap = new Map();
+        bindings.forEach(b => {
+          if (b['p']?.type === 'uri' && LABEL_PROPS.has(b['p'].value) &&
+              b['o']?.type === 'literal' && !labelMap.has(b['s']?.value)) {
+            labelMap.set(b['s'].value, b['o'].value);
+          }
+        });
+        const images = thumbRows.map(b => ({
+          url:   b['o'].value,
+          label: labelMap.get(b['s'].value) || '',
+        }));
+        return { images };
+      }
+    }
 
     // Pattern A: ?p ?o triple pattern — look for a predicate column whose
     // values are thumbnail property URIs, then collect the paired object values.
