@@ -24,13 +24,13 @@ SELECT ?type (SAMPLE(?lbl) AS ?label) (COUNT(DISTINCT ?thing) AS ?count) WHERE {
 GROUP BY ?type
 ORDER BY DESC(?count)`;
 
-// $URI is replaced with the actual type URI before execution
+// $URI is replaced with the actual type URI before execution.
+// Primary form: counts properties across a 1 000-instance sample, sorted
+// by frequency so the most common properties appear first.
 const SCHEMA_PROPERTIES_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?p (COUNT(?p) AS ?count) WHERE {
   {
-    SELECT ?s WHERE {
-      ?s rdf:type <$URI> .
-    }
+    SELECT ?s WHERE { ?s rdf:type <$URI> }
     LIMIT 1000
   }
   ?s ?p ?o .
@@ -38,6 +38,16 @@ SELECT ?p (COUNT(?p) AS ?count) WHERE {
 }
 GROUP BY ?p
 ORDER BY DESC(?count)`;
+
+// Fallback for strict Virtuoso endpoints: no COUNT/GROUP BY/ORDER BY.
+// Just collects distinct literal-valued properties from a small sample.
+const SCHEMA_PROPERTIES_SIMPLE_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT DISTINCT ?p WHERE {
+  { SELECT ?s WHERE { ?s rdf:type <$URI> } LIMIT 20 }
+  ?s ?p ?o .
+  FILTER(isLiteral(?o))
+}
+LIMIT 100`;
 
 // $URI is replaced with the actual type URI before execution.
 // The inner LIMIT 1000 subquery samples a representative set of instances
@@ -244,11 +254,9 @@ class SchemaManager {
     body.innerHTML = '<div class="schema-props-loading">Loading properties…</div>';
 
     try {
-      const propsQ   = SCHEMA_PROPERTIES_QUERY.replace(/\$URI/g, type.uri);
-      const data     = await this._onQuery(propsQ);
-      const propUris = this._renderProperties(body, data);
+      const propUris = await this._fetchProperties(type.uri);
+      this._renderProperties(body, propUris);
 
-      // Build pivoted SELECT (or fall back if no literal properties found)
       body._sampleQuery = propUris.length > 0
         ? this._buildPivotedQuery(type.uri, propUris)
         : SCHEMA_SAMPLE_QUERY_FALLBACK.replace(/\$URI/g, type.uri);
@@ -357,23 +365,40 @@ ${optionals}
     return lines.join('\n');
   }
 
-  /** Render property list into body; returns array of property URIs. */
-  _renderProperties(body, data) {
-    const bindings = data?.results?.bindings || [];
-    if (bindings.length === 0) {
-      body.innerHTML = '<div class="schema-props-empty">No literal properties found.</div>';
-      return [];
+  /**
+   * Fetch literal-valued properties for a type URI.
+   * Tries the counted query first (useful for ordering), then the simpler
+   * DISTINCT query, and returns a plain array of property URIs.
+   */
+  async _fetchProperties(typeUri) {
+    const queries = [
+      SCHEMA_PROPERTIES_QUERY,
+      SCHEMA_PROPERTIES_SIMPLE_QUERY,
+    ];
+    for (const tmpl of queries) {
+      try {
+        const data     = await this._onQuery(tmpl.replace(/\$URI/g, typeUri));
+        const bindings = data?.results?.bindings || [];
+        const uris     = bindings.map(row => row.p?.value).filter(Boolean);
+        if (uris.length > 0) return uris;
+      } catch (_) { /* try next */ }
     }
-    body.innerHTML = bindings.map(row => {
-      const uri   = row.p.value;
-      const count = parseInt(row.count.value, 10).toLocaleString();
+    return [];
+  }
+
+  /** Render property list into the sidebar body element. */
+  _renderProperties(body, propUris) {
+    if (propUris.length === 0) {
+      body.innerHTML = '<div class="schema-props-empty">No literal properties found.</div>';
+      return;
+    }
+    body.innerHTML = propUris.map(uri => {
       const label = this._localName(uri);
       return `<div class="schema-prop" title="${this._esc(uri)}">
   <span class="schema-prop-label">${this._esc(label)}</span>
-  <span class="schema-prop-count">${count}</span>
 </div>`;
     }).join('');
-    return bindings.map(row => row.p.value);
+    return;
   }
 
   _setLoading() {
