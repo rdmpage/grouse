@@ -1,10 +1,574 @@
 [
-  { "uri": "http://purl.org/ontology/bibo/Article",      "label": "Article" },
-  { "uri": "http://purl.org/ontology/bibo/Journal",      "label": "Journal" },
-  { "uri": "http://purl.org/ontology/bibo/Issue",        "label": "Issue" },
-  { "uri": "http://purl.org/ontology/bibo/Book",         "label": "Book" },
-  { "uri": "http://purl.org/ontology/bibo/Thesis",       "label": "Thesis" },
-  { "uri": "http://xmlns.com/foaf/0.1/Person",           "label": "Person" },
-  { "uri": "http://xmlns.com/foaf/0.1/Organization",     "label": "Organization" },
-  { "uri": "http://xmlns.com/foaf/0.1/Document",         "label": "Document" }
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Abstract",
+    "label": "Abstract"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/AccountsReview",
+    "label": "Accounts Review"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Addendum",
+    "label": "Addendum"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Album",
+    "label": "Album"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Amendment",
+    "label": "Amendment"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Anthology",
+    "label": "Anthology"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Appendix",
+    "label": "Appendix"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/ArcheologicalChronicle",
+    "label": "Archeological Chronicle"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Article",
+    "label": "Article"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/AssemblyComitteesDecision",
+    "label": "Assembly Comittees Decision"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/AssemblyMeetings",
+    "label": "Assembly Meetings"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/AssemblyWork",
+    "label": "Assembly Work"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Atlas",
+    "label": "Atlas"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/BibliographicNote",
+    "label": "Bibliographic Note"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Bibliography",
+    "label": "Bibliography"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/BiographicalInformation",
+    "label": "Biographical Information"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Blends",
+    "label": "Blends"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/BookAdmission",
+    "label": "Book Admission"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Catalog",
+    "label": "Catalog"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Chapter",
+    "label": "Chapter"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Circular",
+    "label": "Circular"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/ComitteesDecision",
+    "label": "Comittees Decision"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/ComitteesElection",
+    "label": "Comittees Election"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Conclusion",
+    "label": "Conclusion"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/ConferenceReview",
+    "label": "Conference Review"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Convocation",
+    "label": "Convocation"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Correspondence",
+    "label": "Correspondence"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Correspondences",
+    "label": "Correspondences"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/CriticalEdition",
+    "label": "Critical Edition"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/CriticalNote",
+    "label": "Critical Note"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/DataArray",
+    "label": "Data Array"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Debate",
+    "label": "Debate"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Decision",
+    "label": "Decision"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Deliberation",
+    "label": "Deliberation"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Diagram",
+    "label": "Diagram"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Dictionary",
+    "label": "Dictionary"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/DictionaryEntry",
+    "label": "Dictionary Entry"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/DraftDecree",
+    "label": "Draft Decree"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/DraftLaw",
+    "label": "Draft Law"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Drawing",
+    "label": "Drawing"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Editorial",
+    "label": "Editorial"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Graphic",
+    "label": "Graphic"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Grievance",
+    "label": "Grievance"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Illustration",
+    "label": "Illustration"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/IllustrationDoc",
+    "label": "Illustration Doc"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Index",
+    "label": "Index"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Instruction",
+    "label": "Instruction"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Issue",
+    "label": "Issue"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/KingsCouncilDecision",
+    "label": "Kings Council Decision"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/LawText",
+    "label": "Law Text"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/LeaveRequest",
+    "label": "Leave Request"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/LegislativeDecree",
+    "label": "Legislative Decree"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Letter",
+    "label": "Letter"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Liminary",
+    "label": "Liminary"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/LocalAssemblyDecision",
+    "label": "Local Assembly Decision"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/MandatoryInstruction",
+    "label": "Mandatory Instruction"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Map",
+    "label": "Map"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Memorandum",
+    "label": "Memorandum"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/MinistersSpeech",
+    "label": "Ministers Speech"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Missionreport",
+    "label": "Missionreport"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Monograph",
+    "label": "Monograph"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Monography",
+    "label": "Monography"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Motion",
+    "label": "Motion"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/NewspaperExtract",
+    "label": "Newspaper Extract"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/NominativeDecision",
+    "label": "Nominative Decision"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Ordinance",
+    "label": "Ordinance"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/OtherDocument",
+    "label": "Other Document"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/OtherIllustration",
+    "label": "Other Illustration"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/PatrioticDonation",
+    "label": "Patriotic Donation"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Photography",
+    "label": "Photography"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Plan",
+    "label": "Plan"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Plate",
+    "label": "Plate"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Proceedings",
+    "label": "Proceedings"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/ReceivedBooks",
+    "label": "Received Books"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Referral",
+    "label": "Referral"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Regulation",
+    "label": "Regulation"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Report",
+    "label": "Report"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/ResearchTopic",
+    "label": "Research Topic"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Review",
+    "label": "Review"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Revocation",
+    "label": "Revocation"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/RollCallVote",
+    "label": "Roll Call Vote"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Section",
+    "label": "Section"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Seminar",
+    "label": "Seminar"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/SourceData",
+    "label": "Source Data"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/SpecialIssue",
+    "label": "Special Issue"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Speech",
+    "label": "Speech"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/StatementsFromAssembly",
+    "label": "Statements From Assembly"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/StatementsToAssembly",
+    "label": "Statements To Assembly"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/StrikeOff",
+    "label": "Strike Off"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/SupplementIssue",
+    "label": "Supplement Issue"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Table",
+    "label": "Table"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/TeachingMaterial",
+    "label": "Teaching Material"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Textbook",
+    "label": "Textbook"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/Thesis",
+    "label": "Thesis"
+  },
+  {
+    "uri": "http://data.persee.fr/ontology/persee-ontology/UnsaidSpeech",
+    "label": "Unsaid Speech"
+  },
+  {
+    "uri": "http://dbpedia.org/ontology/ArchitecturalStructure",
+    "label": "Architectural Structure"
+  },
+  {
+    "uri": "http://dbpedia.org/ontology/Species",
+    "label": "Species"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankClass",
+    "label": "Rank Class"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankFamily",
+    "label": "Rank Family"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankGenus",
+    "label": "Rank Genus"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankKingdom",
+    "label": "Rank Kingdom"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankOrder",
+    "label": "Rank Order"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankPhylum",
+    "label": "Rank Phylum"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankSpecies",
+    "label": "Rank Species"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankSubclass",
+    "label": "Rank Subclass"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankSuborder",
+    "label": "Rank Suborder"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankSubspecies",
+    "label": "Rank Subspecies"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankSuperfamily",
+    "label": "Rank Superfamily"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankSuperorder",
+    "label": "Rank Superorder"
+  },
+  {
+    "uri": "http://lod.taxonconcept.org/ontology/txn.owl#RankVariety",
+    "label": "Rank Variety"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Book",
+    "label": "Book"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Collection",
+    "label": "Collection"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Document",
+    "label": "Document"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Image",
+    "label": "Image"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Issue",
+    "label": "Issue"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Journal",
+    "label": "Journal"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Proceedings",
+    "label": "Proceedings"
+  },
+  {
+    "uri": "http://purl.org/ontology/bibo/Series",
+    "label": "Series"
+  },
+  {
+    "uri": "http://purl.org/spar/biro/BibliographicRecord",
+    "label": "Bibliographic Record"
+  },
+  {
+    "uri": "http://rdaregistry.info/Elements/c/Manifestation",
+    "label": "Manifestation"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#array-of-QuadMap",
+    "label": "array-of-Quad Map"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#array-of-QuadMapATable",
+    "label": "array-of-Quad Map ATable"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#array-of-QuadMapColumn",
+    "label": "array-of-Quad Map Column"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#array-of-QuadMapFormat",
+    "label": "array-of-Quad Map Format"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#array-of-string",
+    "label": "array-of-string"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#QuadMap",
+    "label": "Quad Map"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#QuadMapATable",
+    "label": "Quad Map ATable"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#QuadMapColumn",
+    "label": "Quad Map Column"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#QuadMapFormat",
+    "label": "Quad Map Format"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#QuadMapFText",
+    "label": "Quad Map FText"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#QuadMapValue",
+    "label": "Quad Map Value"
+  },
+  {
+    "uri": "http://www.openlinksw.com/schemas/virtrdf#QuadStorage",
+    "label": "Quad Storage"
+  },
+  {
+    "uri": "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property",
+    "label": "Property"
+  },
+  {
+    "uri": "http://www.w3.org/2000/01/rdf-schema#Class",
+    "label": "Class"
+  },
+  {
+    "uri": "http://www.w3.org/2002/07/owl#AnnotationProperty",
+    "label": "Annotation Property"
+  },
+  {
+    "uri": "http://www.w3.org/2002/07/owl#Class",
+    "label": "Class"
+  },
+  {
+    "uri": "http://www.w3.org/2002/07/owl#DatatypeProperty",
+    "label": "Datatype Property"
+  },
+  {
+    "uri": "http://www.w3.org/2002/07/owl#Ontology",
+    "label": "Ontology"
+  },
+  {
+    "uri": "http://www.w3.org/2002/07/owl#OntologyProperty",
+    "label": "Ontology Property"
+  },
+  {
+    "uri": "http://www.w3.org/2004/02/skos/core#Concept",
+    "label": "Concept"
+  },
+  {
+    "uri": "http://www.w3.org/ns/sparql-service-description#Service",
+    "label": "Service"
+  },
+  {
+    "uri": "http://xmlns.com/foaf/0.1/Organization",
+    "label": "Organization"
+  },
+  {
+    "uri": "http://xmlns.com/foaf/0.1/Person",
+    "label": "Person"
+  }
 ]
