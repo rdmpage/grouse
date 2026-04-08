@@ -9,6 +9,9 @@
 
 // ── Query templates ───────────────────────────────────────────────────────────
 
+// Primary schema discovery query — works on most endpoints.
+// Counts instances per type from a bounded sample (inner LIMIT keeps the
+// query cheap on medium-sized stores).
 const SCHEMA_TYPES_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT ?type (SAMPLE(?lbl) AS ?label) (COUNT(DISTINCT ?thing) AS ?count) WHERE {
@@ -105,16 +108,47 @@ class SchemaManager {
 
   // ── Public API ──────────────────────────────────────────────────────────────
 
-  /** Run the types query and render the sidebar accordion. */
-  async load() {
+  /**
+   * Load the schema for a given endpoint URL.
+   *
+   * Strategy:
+   *   1. Run the SPARQL types query — works on most endpoints.
+   *   2. If that fails, look for  schemas/<hostname>.json  on the server.
+   *      This file can be hand-crafted for endpoints that are too large or
+   *      too restrictive to support automatic discovery (e.g. Persée, Wikidata).
+   *   3. If both fail, show a clear error with instructions.
+   *
+   * @param {string} endpointUrl  Full URL of the connected SPARQL endpoint.
+   */
+  async load(endpointUrl = '') {
+    this._endpointUrl = endpointUrl;
     this._setLoading();
+
+    // ── Strategy 1: SPARQL discovery ──────────────────────────────────────
     try {
-      const data   = await this._onQuery(SCHEMA_TYPES_QUERY);
-      this._types  = this._parseTypes(data);
-      this._render();
-    } catch (err) {
-      this._setError(err.message);
-    }
+      const data = await this._onQuery(SCHEMA_TYPES_QUERY);
+      this._types = this._parseTypes(data);
+      if (this._types.length > 0) { this._render(); return; }
+    } catch (_) { /* fall through to local file */ }
+
+    // ── Strategy 2: local schema file ─────────────────────────────────────
+    try {
+      const hostname = new URL(endpointUrl).hostname;
+      const resp     = await fetch(`schemas/${hostname}.json`);
+      if (resp.ok) {
+        const json  = await resp.json();
+        this._types = this._parseLocalSchema(json);
+        if (this._types.length > 0) { this._render(); return; }
+      }
+    } catch (_) { /* fall through to error */ }
+
+    // ── Nothing worked ────────────────────────────────────────────────────
+    let hostname = '';
+    try { hostname = new URL(endpointUrl).hostname; } catch (_) {}
+    this._setError(
+      `Schema discovery failed for this endpoint.` +
+      (hostname ? ` You can add a <code>schemas/${hostname}.json</code> file to enable manual schema browsing.` : '')
+    );
   }
 
   /** Reset sidebar to initial state (called on disconnect). */
@@ -126,13 +160,35 @@ class SchemaManager {
 
   // ── Internal ────────────────────────────────────────────────────────────────
 
+  // SPARQL result rows (aggregated: ?type, ?label, ?count).
   _parseTypes(data) {
     if (!data?.results?.bindings) return [];
-    return data.results.bindings.map(row => ({
-      uri:   row.type.value,
-      label: row.label?.value || null,
-      count: parseInt(row.count.value, 10) || 0,
-    }));
+    return data.results.bindings
+      .filter(row => row.type)
+      .map(row => ({
+        uri:   row.type.value,
+        label: row.label?.value || null,
+        count: parseInt(row.count?.value, 10) || 0,
+      }));
+  }
+
+  /**
+   * Parse a hand-crafted local schema file.
+   *
+   * Accepted formats:
+   *   • Array of URI strings:           ["http://...", ...]
+   *   • Array of objects:               [{ "uri": "http://...", "label": "...", "count": 0 }, ...]
+   */
+  _parseLocalSchema(json) {
+    if (!Array.isArray(json)) return [];
+    return json.map(item => {
+      if (typeof item === 'string') return { uri: item, label: null, count: 0 };
+      return {
+        uri:   item.uri   || item.type || '',
+        label: item.label || null,
+        count: parseInt(item.count, 10) || 0,
+      };
+    }).filter(t => t.uri);
   }
 
   _render() {

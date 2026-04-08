@@ -1,0 +1,10 @@
+[
+  { "uri": "http://purl.org/ontology/bibo/Article",      "label": "Article" },
+  { "uri": "http://purl.org/ontology/bibo/Journal",      "label": "Journal" },
+  { "uri": "http://purl.org/ontology/bibo/Issue",        "label": "Issue" },
+  { "uri": "http://purl.org/ontology/bibo/Book",         "label": "Book" },
+  { "uri": "http://purl.org/ontology/bibo/Thesis",       "label": "Thesis" },
+  { "uri": "http://xmlns.com/foaf/0.1/Person",           "label": "Person" },
+  { "uri": "http://xmlns.com/foaf/0.1/Organization",     "label": "Organization" },
+  { "uri": "http://xmlns.com/foaf/0.1/Document",         "label": "Document" }
+]

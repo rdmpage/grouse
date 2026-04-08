@@ -99,7 +99,7 @@
       updateSidebarEndpoint(url, true);
       editor.enable();
       logMessage(`Connected to ${url}`, 'success');
-      schema.load();
+      schema.load(url);
     } else {
       setConnectionUI('error');
       logMessage(`Connection failed: ${error}`, 'error');
