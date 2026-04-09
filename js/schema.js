@@ -9,9 +9,9 @@
 
 // ── Query templates ───────────────────────────────────────────────────────────
 
-// Primary schema discovery query — works on most endpoints.
-// Counts instances per type from a bounded sample (inner LIMIT keeps the
-// query cheap on medium-sized stores).
+// Primary types query — counts instances and fetches labels.
+// Works on standard endpoints (Oxigraph, DBpedia, …).  May time out on
+// large stores (Blazegraph) where COUNT(DISTINCT) is expensive.
 const SCHEMA_TYPES_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT ?type (SAMPLE(?lbl) AS ?label) (COUNT(DISTINCT ?thing) AS ?count) WHERE {
@@ -23,6 +23,13 @@ SELECT ?type (SAMPLE(?lbl) AS ?label) (COUNT(DISTINCT ?thing) AS ?count) WHERE {
 }
 GROUP BY ?type
 ORDER BY DESC(?count)`;
+
+// Flat fallback — no aggregation, no labels, just raw ?s/?type rows.
+// Safe on Blazegraph and any endpoint where COUNT(DISTINCT) times out.
+// _parseTypes() deduplicates and counts the rows in JS.
+const SCHEMA_TYPES_FLAT_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?type WHERE { ?s a ?type }
+LIMIT 5000`;
 
 // $URI is replaced with the actual type URI before execution.
 // Primary form: counts properties across a 1 000-instance sample, sorted
@@ -143,12 +150,16 @@ class SchemaManager {
     this._endpointUrl = endpointUrl;
     this._setLoading();
 
-    // ── Strategy 1: SPARQL discovery ──────────────────────────────────────
-    try {
-      const data = await this._onQuery(SCHEMA_TYPES_QUERY);
-      this._types = this._parseTypes(data);
-      if (this._types.length > 0) { this._render(); return; }
-    } catch (_) { /* fall through to local file */ }
+    // ── Strategy 1: SPARQL discovery (two query variants) ─────────────────
+    for (const query of [SCHEMA_TYPES_QUERY, SCHEMA_TYPES_FLAT_QUERY]) {
+      try {
+        const data = await this._onQuery(query);
+        this._types = this._parseTypes(data);
+        if (this._types.length > 0) { this._render(); return; }
+      } catch (err) {
+        console.warn('[schema] types query failed, trying next:', err.message);
+      }
+    }
 
     // ── Strategy 2: local schema file ─────────────────────────────────────
     try {
@@ -179,16 +190,26 @@ class SchemaManager {
 
   // ── Internal ────────────────────────────────────────────────────────────────
 
-  // SPARQL result rows (aggregated: ?type, ?label, ?count).
+  // Handles both aggregated results (?type ?label ?count from GROUP BY query)
+  // and flat results (?type rows from the no-aggregation fallback query).
+  // Deduplicates flat rows in JS and uses occurrence frequency as sort key.
   _parseTypes(data) {
     if (!data?.results?.bindings) return [];
-    return data.results.bindings
-      .filter(row => row.type)
-      .map(row => ({
-        uri:   row.type.value,
-        label: row.label?.value || null,
-        count: parseInt(row.count?.value, 10) || 0,
-      }));
+    const map = new Map();
+    for (const row of data.results.bindings) {
+      if (!row.type) continue;
+      const uri = row.type.value;
+      if (map.has(uri)) {
+        map.get(uri).count++;          // flat query: count occurrences
+      } else {
+        map.set(uri, {
+          uri,
+          label: row.label?.value || null,
+          count: parseInt(row.count?.value, 10) || 1,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count);
   }
 
   /**
