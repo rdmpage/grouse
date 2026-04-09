@@ -150,6 +150,20 @@ class SchemaManager {
     this._endpointUrl = endpointUrl;
     this._setLoading();
 
+    // ── Strategy 0: SPARQL Service Description (VoID) ─────────────────────
+    // GET the endpoint URL — standards-compliant endpoints return a VoID/SD
+    // document with pre-computed class statistics.  No SPARQL query needed.
+    try {
+      const types = await this._fetchServiceDescription(endpointUrl);
+      if (types.length > 0) {
+        this._types = types;
+        this._render();
+        return;
+      }
+    } catch (err) {
+      console.warn('[schema] service description fetch failed:', err.message);
+    }
+
     // ── Strategy 1: SPARQL discovery (two query variants) ─────────────────
     for (const query of [SCHEMA_TYPES_QUERY, SCHEMA_TYPES_FLAT_QUERY]) {
       try {
@@ -179,6 +193,82 @@ class SchemaManager {
       `Schema discovery failed for this endpoint.` +
       (hostname ? ` You can add a <code>schemas/${hostname}.json</code> file to enable manual schema browsing.` : '')
     );
+  }
+
+  /**
+   * Fetch the SPARQL Service Description from the endpoint and extract
+   * VoID class partition data (void:class + void:triples).
+   * Works for any endpoint that serves SD on a plain GET request.
+   */
+  async _fetchServiceDescription(endpointUrl) {
+    const isCrossOrigin = (() => {
+      try { return new URL(endpointUrl).origin !== window.location.origin; }
+      catch { return false; }
+    })();
+
+    const fetchUrl = isCrossOrigin
+      ? `proxy.php?endpoint=${encodeURIComponent(endpointUrl)}`
+      : endpointUrl;
+
+    const resp = await fetch(fetchUrl, {
+      headers: { Accept: 'application/rdf+xml, text/turtle;q=0.9, */*;q=0.5' },
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const ct   = (resp.headers.get('content-type') || '').split(';')[0].trim();
+    const text = await resp.text();
+
+    if (ct === 'text/turtle' || ct === 'text/n3') {
+      return this._parseVoidTurtle(text);
+    }
+    // Default: RDF/XML
+    return this._parseVoidRdfXml(text);
+  }
+
+  /** Parse void:class / void:triples from RDF/XML using DOMParser. */
+  _parseVoidRdfXml(xmlText) {
+    const VOID = 'http://rdfs.org/ns/void#';
+    const RDF  = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+    let doc;
+    try {
+      doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    } catch { return []; }
+
+    const types = [];
+    for (const desc of doc.getElementsByTagNameNS(RDF, 'Description')) {
+      const classEl = desc.getElementsByTagNameNS(VOID, 'class')[0];
+      if (!classEl) continue;
+      const uri = classEl.getAttributeNS(RDF, 'resource') ||
+                  classEl.getAttribute('rdf:resource');
+      if (!uri) continue;
+      const triplesEl = desc.getElementsByTagNameNS(VOID, 'triples')[0];
+      const count = triplesEl ? parseInt(triplesEl.textContent, 10) || 0 : 0;
+      types.push({ uri, label: null, count });
+    }
+    return types.sort((a, b) => b.count - a.count);
+  }
+
+  /** Parse void:class / void:triples from Turtle using N3.js. */
+  _parseVoidTurtle(turtle) {
+    if (!window.N3) return [];
+    const VOID = 'http://rdfs.org/ns/void#';
+    let quads;
+    try { quads = new N3.Parser().parse(turtle); } catch { return []; }
+
+    const classMap   = new Map(); // nodeId → class URI
+    const triplesMap = new Map(); // nodeId → count
+
+    for (const q of quads) {
+      const s = q.subject.value, p = q.predicate.value, o = q.object;
+      if (p === VOID + 'class'   && o.termType === 'NamedNode')
+        classMap.set(s, o.value);
+      if (p === VOID + 'triples' && o.termType === 'Literal')
+        triplesMap.set(s, parseInt(o.value, 10) || 0);
+    }
+
+    return [...classMap.entries()]
+      .map(([id, uri]) => ({ uri, label: null, count: triplesMap.get(id) || 0 }))
+      .sort((a, b) => b.count - a.count);
   }
 
   /** Reset sidebar to initial state (called on disconnect). */

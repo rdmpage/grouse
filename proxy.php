@@ -22,10 +22,33 @@ $accept   = $_SERVER['HTTP_ACCEPT'] ?? 'application/sparql-results+json';
 
 // ── Validate inputs ────────────────────────────────────────────────────────
 
-if (!$endpoint || !$query) {
+if (!$endpoint) {
     http_response_code(400);
     header('Content-Type: application/json');
-    echo json_encode(['error' => 'Missing endpoint or query parameter']);
+    echo json_encode(['error' => 'Missing endpoint parameter']);
+    exit;
+}
+
+// No query = service-description GET (used to fetch VoID statistics).
+if (!$query) {
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $endpoint,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Accept: application/rdf+xml, text/turtle;q=0.9, */*;q=0.5'],
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+    ]);
+    $body     = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $ct       = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+    if ($curlErr) { http_response_code(502); echo json_encode(['error' => $curlErr]); exit; }
+    http_response_code($httpCode);
+    if ($ct) header('Content-Type: ' . $ct);
+    echo $body;
     exit;
 }
 
