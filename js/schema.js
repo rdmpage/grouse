@@ -39,12 +39,20 @@ SELECT ?p (COUNT(?p) AS ?count) WHERE {
 GROUP BY ?p
 ORDER BY DESC(?count)`;
 
-// Fallback for strict Virtuoso endpoints: no COUNT/GROUP BY/ORDER BY.
-// Just collects distinct literal-valued properties from a small sample.
+// Fallback B: no COUNT/GROUP BY/ORDER BY, but still uses inner subquery.
 const SCHEMA_PROPERTIES_SIMPLE_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT DISTINCT ?p WHERE {
   { SELECT ?s WHERE { ?s rdf:type <$URI> } LIMIT 20 }
   ?s ?p ?o .
+  FILTER(isLiteral(?o))
+}
+LIMIT 100`;
+
+// Fallback C: no subquery at all — works on Blazegraph and other engines
+// that have trouble with outer-join variable scoping from inner SELECTs.
+const SCHEMA_PROPERTIES_FLAT_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT DISTINCT ?p WHERE {
+  ?s rdf:type <$URI> ; ?p ?o .
   FILTER(isLiteral(?o))
 }
 LIMIT 100`;
@@ -87,13 +95,14 @@ WHERE {
 GROUP BY ?direction ?predicate ?nThings ?example
 ORDER BY ?direction DESC(?nThings)`;
 
-// Fallback used when a type has no discoverable literal properties
+// Fallback sample query when no literal properties are discovered.
+// Uses a flat triple pattern (no inner subquery) for broad compatibility.
 const SCHEMA_SAMPLE_QUERY_FALLBACK = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?resourceURI ?p ?o WHERE {
-  { SELECT ?resourceURI WHERE { ?resourceURI rdf:type <$URI> } LIMIT 10 }
-  ?resourceURI ?p ?o .
+  ?resourceURI rdf:type <$URI> ; ?p ?o .
   FILTER(isLiteral(?o))
-}`;
+}
+LIMIT 100`;
 
 // ── SchemaManager ─────────────────────────────────────────────────────────────
 
@@ -291,11 +300,14 @@ class SchemaManager {
       `  OPTIONAL { ?resourceURI <${v.uri}> ?${v.name} }`
     ).join('\n');
 
+    // Outer LIMIT rather than an inner subquery — avoids Blazegraph's
+    // variable-scoping issues with the { SELECT ... } LIMIT N join pattern.
     return `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-SELECT ?resourceURI ${selectVars} WHERE {
-  { SELECT ?resourceURI WHERE { ?resourceURI rdf:type <${typeUri}> } LIMIT 10 }
+SELECT DISTINCT ?resourceURI ${selectVars} WHERE {
+  ?resourceURI rdf:type <${typeUri}> .
 ${optionals}
-}`;
+}
+LIMIT 10`;
   }
 
   async _clickConnections(el, type) {
@@ -372,8 +384,9 @@ ${optionals}
    */
   async _fetchProperties(typeUri) {
     const queries = [
-      SCHEMA_PROPERTIES_QUERY,
-      SCHEMA_PROPERTIES_SIMPLE_QUERY,
+      SCHEMA_PROPERTIES_QUERY,        // counted, subquery inner LIMIT
+      SCHEMA_PROPERTIES_SIMPLE_QUERY, // distinct, subquery inner LIMIT
+      SCHEMA_PROPERTIES_FLAT_QUERY,   // distinct, no subquery (Blazegraph-safe)
     ];
     for (const tmpl of queries) {
       try {
@@ -381,7 +394,9 @@ ${optionals}
         const bindings = data?.results?.bindings || [];
         const uris     = bindings.map(row => row.p?.value).filter(Boolean);
         if (uris.length > 0) return uris;
-      } catch (_) { /* try next */ }
+      } catch (err) {
+        console.warn('[schema] properties query failed, trying next fallback:', err.message);
+      }
     }
     return [];
   }
