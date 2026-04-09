@@ -102,12 +102,11 @@ WHERE {
 GROUP BY ?direction ?predicate ?nThings ?example
 ORDER BY ?direction DESC(?nThings)`;
 
-// Fallback sample query when no literal properties are discovered.
-// Uses a flat triple pattern (no inner subquery) for broad compatibility.
+// Fallback sample query — flat pattern, no inner subquery, no literal
+// filter so it returns something even when all properties are URI-valued.
 const SCHEMA_SAMPLE_QUERY_FALLBACK = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 SELECT ?resourceURI ?p ?o WHERE {
   ?resourceURI rdf:type <$URI> ; ?p ?o .
-  FILTER(isLiteral(?o))
 }
 LIMIT 100`;
 
@@ -130,6 +129,7 @@ class SchemaManager {
     this._onConnectionsStart   = onConnectionsStart || (() => {});
     this._onConnections        = onConnections || (() => {});
     this._types                = [];
+    this._voidProperties       = []; // property URIs from VoID service description
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -152,9 +152,10 @@ class SchemaManager {
 
     // ── Strategy 0: SPARQL Service Description (VoID) ─────────────────────
     // GET the endpoint URL — standards-compliant endpoints return a VoID/SD
-    // document with pre-computed class statistics.  No SPARQL query needed.
+    // document with pre-computed class and property statistics.
     try {
-      const types = await this._fetchServiceDescription(endpointUrl);
+      const { types, properties } = await this._fetchServiceDescription(endpointUrl);
+      this._voidProperties = properties; // cache for _fetchProperties fallback
       if (types.length > 0) {
         this._types = types;
         this._render();
@@ -221,54 +222,77 @@ class SchemaManager {
     if (ct === 'text/turtle' || ct === 'text/n3') {
       return this._parseVoidTurtle(text);
     }
-    // Default: RDF/XML
     return this._parseVoidRdfXml(text);
   }
 
-  /** Parse void:class / void:triples from RDF/XML using DOMParser. */
+  /**
+   * Parse void:class+void:triples (types) and void:property (properties)
+   * from RDF/XML using DOMParser.
+   * Returns { types: [{uri,label,count}], properties: [uri, …] }
+   */
   _parseVoidRdfXml(xmlText) {
     const VOID = 'http://rdfs.org/ns/void#';
     const RDF  = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
     let doc;
     try {
       doc = new DOMParser().parseFromString(xmlText, 'application/xml');
-    } catch { return []; }
+    } catch { return { types: [], properties: [] }; }
 
-    const types = [];
+    const types      = [];
+    const properties = [];
+
     for (const desc of doc.getElementsByTagNameNS(RDF, 'Description')) {
+      // Class partitions → types
       const classEl = desc.getElementsByTagNameNS(VOID, 'class')[0];
-      if (!classEl) continue;
-      const uri = classEl.getAttributeNS(RDF, 'resource') ||
-                  classEl.getAttribute('rdf:resource');
-      if (!uri) continue;
-      const triplesEl = desc.getElementsByTagNameNS(VOID, 'triples')[0];
-      const count = triplesEl ? parseInt(triplesEl.textContent, 10) || 0 : 0;
-      types.push({ uri, label: null, count });
+      if (classEl) {
+        const uri = classEl.getAttributeNS(RDF, 'resource') ||
+                    classEl.getAttribute('rdf:resource');
+        if (uri) {
+          const triplesEl = desc.getElementsByTagNameNS(VOID, 'triples')[0];
+          const count = triplesEl ? parseInt(triplesEl.textContent, 10) || 0 : 0;
+          types.push({ uri, label: null, count });
+        }
+      }
+      // Property partitions → property URIs
+      const propEl = desc.getElementsByTagNameNS(VOID, 'property')[0];
+      if (propEl) {
+        const uri = propEl.getAttributeNS(RDF, 'resource') ||
+                    propEl.getAttribute('rdf:resource');
+        if (uri) properties.push(uri);
+      }
     }
-    return types.sort((a, b) => b.count - a.count);
+
+    return {
+      types:      types.sort((a, b) => b.count - a.count),
+      properties: properties.filter(u => u !== 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
+    };
   }
 
-  /** Parse void:class / void:triples from Turtle using N3.js. */
+  /** Parse VoID types and properties from Turtle using N3.js. */
   _parseVoidTurtle(turtle) {
-    if (!window.N3) return [];
+    if (!window.N3) return { types: [], properties: [] };
     const VOID = 'http://rdfs.org/ns/void#';
     let quads;
-    try { quads = new N3.Parser().parse(turtle); } catch { return []; }
+    try { quads = new N3.Parser().parse(turtle); } catch { return { types: [], properties: [] }; }
 
-    const classMap   = new Map(); // nodeId → class URI
-    const triplesMap = new Map(); // nodeId → count
+    const classMap   = new Map();
+    const triplesMap = new Map();
+    const properties = [];
 
     for (const q of quads) {
       const s = q.subject.value, p = q.predicate.value, o = q.object;
-      if (p === VOID + 'class'   && o.termType === 'NamedNode')
-        classMap.set(s, o.value);
-      if (p === VOID + 'triples' && o.termType === 'Literal')
-        triplesMap.set(s, parseInt(o.value, 10) || 0);
+      if (p === VOID + 'class'    && o.termType === 'NamedNode') classMap.set(s, o.value);
+      if (p === VOID + 'triples'  && o.termType === 'Literal')   triplesMap.set(s, parseInt(o.value, 10) || 0);
+      if (p === VOID + 'property' && o.termType === 'NamedNode') properties.push(o.value);
     }
 
-    return [...classMap.entries()]
-      .map(([id, uri]) => ({ uri, label: null, count: triplesMap.get(id) || 0 }))
-      .sort((a, b) => b.count - a.count);
+    const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+    return {
+      types: [...classMap.entries()]
+        .map(([id, uri]) => ({ uri, label: null, count: triplesMap.get(id) || 0 }))
+        .sort((a, b) => b.count - a.count),
+      properties: properties.filter(u => u !== RDF_TYPE),
+    };
   }
 
   /** Reset sidebar to initial state (called on disconnect). */
@@ -509,6 +533,27 @@ LIMIT 10`;
         console.warn('[schema] properties query failed, trying next fallback:', err.message);
       }
     }
+
+    // Fallback D: probe VoID property list (from service description) against
+    // this type using VALUES so each check is a cheap bound-predicate lookup.
+    if (this._voidProperties.length > 0) {
+      const valuesList = this._voidProperties.map(u => `<${u}>`).join(' ');
+      const probeQuery = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT DISTINCT ?p WHERE {
+  VALUES ?p { ${valuesList} }
+  ?s rdf:type <${typeUri}> ; ?p ?o .
+  FILTER(isLiteral(?o))
+}`;
+      try {
+        const data     = await this._onQuery(probeQuery);
+        const bindings = data?.results?.bindings || [];
+        const uris     = bindings.map(row => row.p?.value).filter(Boolean);
+        if (uris.length > 0) return uris;
+      } catch (err) {
+        console.warn('[schema] VoID probe query failed:', err.message);
+      }
+    }
+
     return [];
   }
 
